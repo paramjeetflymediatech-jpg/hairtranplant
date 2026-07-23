@@ -508,12 +508,13 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
             <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 md:p-10 shadow-[0_0_50px_rgba(255,255,255,0.03)] space-y-8">
               
               {/* Ant Design Steps Navigation */}
-              <Steps 
-                current={step - 1} 
-                items={stepsItems} 
-                size="small" 
-                className="mb-8"
-              />
+              <div className="pb-6 mb-8 border-b border-slate-800/60">
+                <Steps 
+                  current={step - 1} 
+                  items={stepsItems} 
+                  size="small" 
+                />
+              </div>
 
               {loading ? (
                 <div className="py-20 text-center space-y-4">
