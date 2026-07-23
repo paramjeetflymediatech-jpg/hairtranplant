@@ -1,6 +1,9 @@
+import dotenv from 'dotenv';
 import readline from 'readline';
 import { User, sequelize } from '../db/models';
 import { hashPassword } from '../lib/auth';
+
+dotenv.config();
 
 function parseArgs(): Record<string, string> {
   const args: Record<string, string> = {};

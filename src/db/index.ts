@@ -1,4 +1,7 @@
+import dotenv from 'dotenv';
 import { Sequelize } from 'sequelize';
+
+dotenv.config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
