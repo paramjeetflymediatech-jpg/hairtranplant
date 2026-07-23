@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { User, Clinic, Subscription } from '@/db/models';
+import { User, Clinic, Subscription, ensureDbSynced } from '@/db/models';
 import { hashPassword, signToken } from '@/lib/auth';
-import { ensureDbSynced } from '@/db';
 
 export async function POST(req: NextRequest) {
   try {

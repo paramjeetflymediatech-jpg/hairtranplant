@@ -1,4 +1,4 @@
-import sequelize from '../index';
+import sequelize, { ensureDbSynced } from '../index';
 import Clinic from './Clinic';
 import User from './User';
 import Patient from './Patient';
@@ -74,6 +74,7 @@ Surgery.belongsTo(User, { foreignKey: 'doctorId', as: 'doctor' });
 
 export {
   sequelize,
+  ensureDbSynced,
   Clinic,
   User,
   Patient,
