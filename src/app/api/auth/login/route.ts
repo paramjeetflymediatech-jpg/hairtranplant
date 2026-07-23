@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { User, Clinic } from '@/db/models';
 import { verifyPassword, signToken } from '@/lib/auth';
+import { ensureDbSynced } from '@/db';
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSynced();
     const { email, password } = await req.json();
 
     if (!email || !password) {
