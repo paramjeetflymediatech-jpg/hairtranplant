@@ -51,7 +51,7 @@ export const User = sequelize.define<UserInstance>(
       allowNull: false,
       defaultValue: 'PATIENT',
     },
-    avatar: DataTypes.TEXT,
+    avatar: DataTypes.TEXT('long'),
     phone: DataTypes.STRING,
     isActive: {
       type: DataTypes.BOOLEAN,

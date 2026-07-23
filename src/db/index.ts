@@ -69,23 +69,18 @@ export async function ensureDbSynced() {
 
       await sequelize.sync({ alter: true });
 
-      // Modify existing columns in MySQL to LONGTEXT to support large base64 hair photo payloads
-      try {
-        await sequelize.query('ALTER TABLE `leads` MODIFY COLUMN `photos` LONGTEXT NULL;');
-      } catch (e) {
-        // Fallback for non-MySQL or column addition
+      // Modify existing columns in MySQL to LONGTEXT to support large base64 image payloads
+      const safeAlter = async (query: string) => {
         try {
-          await sequelize.query('ALTER TABLE `leads` ADD COLUMN `photos` LONGTEXT NULL;');
-        } catch (e2) {}
-      }
+          await sequelize.query(query);
+        } catch (e) {}
+      };
 
-      try {
-        await sequelize.query('ALTER TABLE `leads` MODIFY COLUMN `hairAnalysisData` LONGTEXT NULL;');
-      } catch (e) {
-        try {
-          await sequelize.query('ALTER TABLE `leads` ADD COLUMN `hairAnalysisData` LONGTEXT NULL;');
-        } catch (e2) {}
-      }
+      await safeAlter('ALTER TABLE `leads` MODIFY COLUMN `photos` LONGTEXT NULL;');
+      await safeAlter('ALTER TABLE `leads` MODIFY COLUMN `hairAnalysisData` LONGTEXT NULL;');
+      await safeAlter('ALTER TABLE `clinics` MODIFY COLUMN `logo` LONGTEXT NULL;');
+      await safeAlter('ALTER TABLE `clinics` MODIFY COLUMN `backgroundImage` LONGTEXT NULL;');
+      await safeAlter('ALTER TABLE `users` MODIFY COLUMN `avatar` LONGTEXT NULL;');
 
       isSynced = true;
     } catch (err) {

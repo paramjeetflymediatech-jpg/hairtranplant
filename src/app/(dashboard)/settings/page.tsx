@@ -18,6 +18,11 @@ import {
   SafetyCertificateOutlined,
   KeyOutlined,
   EditOutlined,
+  UploadOutlined,
+  DeleteOutlined,
+  BgColorsOutlined,
+  StarOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import Swal from 'sweetalert2';
 
@@ -25,7 +30,7 @@ interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: 'DOCTOR' | 'CONSULTANT' | 'RECEPTIONIST' | 'CLINIC_ADMIN';
+  role: 'DOCTOR' | 'CONSULTANT' | 'RECEPTIONIST' | 'CLINIC_ADMIN' | string;
   avatar?: string;
   phone?: string;
   isActive: boolean;
@@ -61,6 +66,16 @@ export default function ClinicSettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [userAvatarPreview, setUserAvatarPreview] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
+
+  // Curated color swatches for branding
+  const presetColors = [
+    { label: 'Teal Medical', hex: '#0d9488' },
+    { label: 'Royal Sapphire', hex: '#2563eb' },
+    { label: 'Deep Violet', hex: '#7c3aed' },
+    { label: 'Crimson Ruby', hex: '#e11d48' },
+    { label: 'Amber Gold', hex: '#d97706' },
+    { label: 'Obsidian Dark', hex: '#0f172a' },
+  ];
 
   // Load clinic data
   useEffect(() => {
@@ -207,9 +222,9 @@ export default function ClinicSettingsPage() {
 
       Swal.fire({
         icon: 'success',
-        title: 'Settings Saved',
-        text: 'Clinic profile and theme parameters updated successfully.',
-        confirmButtonColor: '#0d9488',
+        title: 'Branding & Profile Saved',
+        text: 'Clinic details and visual theme parameters updated successfully.',
+        confirmButtonColor: themeColor,
       });
     } catch (err: any) {
       Swal.fire({
@@ -607,107 +622,166 @@ export default function ClinicSettingsPage() {
                         </Card>
                       </div>
 
-                      {/* Row 2: Branding and Visual Theme Customization */}
-                      <Card className="shadow-sm rounded-2xl border border-slate-200" title="Branding & Visual Theme">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          {/* Column 1: Brand Logo */}
-                          <div className="space-y-4 text-center border-r border-slate-100 pr-6 last:border-r-0 last:pr-0">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Clinic Logo</span>
-                            <div className="mx-auto w-32 h-32 rounded-2xl border border-slate-250 bg-slate-50 flex items-center justify-center overflow-hidden">
-                              {logoPreview ? (
-                                <img src={logoPreview} alt="Logo Preview" className="max-w-full max-h-full object-contain" />
-                              ) : (
-                                <ShopOutlined className="text-3xl text-slate-300" />
-                              )}
+                      {/* Row 2: Ultra-Modern Branding & Visual Theme Studio */}
+                      <Card
+                        className="shadow-md rounded-3xl border border-slate-200/80 overflow-hidden bg-gradient-to-b from-white via-slate-50/50 to-white"
+                        title={
+                          <div className="flex items-center gap-2 text-slate-900 font-extrabold text-base py-1">
+                            <BgColorsOutlined className="text-teal-600 text-lg" />
+                            <span>Branding & Visual Theme Studio</span>
+                          </div>
+                        }
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                          {/* Column 1: Clinic Logo Dropzone */}
+                          <div className="space-y-4 text-center bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                            <div>
+                              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider block mb-1">Clinic Brand Logo</span>
+                              <p className="text-[11px] text-slate-400 font-medium mb-4">Displayed on patient portals and diagnostic headers</p>
+                              
+                              <div className="mx-auto w-36 h-36 rounded-2xl border-2 border-dashed border-teal-400/80 bg-teal-50/30 flex items-center justify-center overflow-hidden relative group transition-all hover:border-teal-500 hover:bg-teal-50/60 shadow-inner">
+                                {logoPreview ? (
+                                  <img src={logoPreview} alt="Brand Logo" className="max-w-full max-h-full object-contain p-2 transition-transform group-hover:scale-105" />
+                                ) : (
+                                  <div className="text-center p-3">
+                                    <ShopOutlined className="text-4xl text-teal-400 mb-1" />
+                                    <span className="text-[11px] font-bold text-slate-500 block">No Logo Uploaded</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex gap-2 justify-center">
+
+                            <div className="flex items-center justify-center gap-2 pt-2">
                               <input
                                 type="file"
                                 accept="image/*"
                                 id="logo-upload-input"
                                 className="hidden"
+                                style={{ display: 'none' }}
                                 onChange={handleLogoChange}
                               />
                               <label
                                 htmlFor="logo-upload-input"
-                                className="inline-block px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold hover:border-slate-500 cursor-pointer transition-colors"
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer transition-colors shadow-sm"
                               >
-                                Upload Brand Logo
+                                <UploadOutlined /> {logoPreview ? 'Change Logo' : 'Upload Logo'}
                               </label>
                               {logoPreview && (
                                 <Button
-                                  type="default"
+                                  type="text"
                                   danger
+                                  icon={<DeleteOutlined />}
                                   onClick={() => {
                                     form.setFieldsValue({ logo: '' });
                                     setLogoPreview(null);
                                   }}
-                                  className="rounded-xl text-xs font-semibold"
+                                  className="rounded-xl text-xs font-bold"
                                 >
-                                  Remove Logo
+                                  Remove
                                 </Button>
                               )}
                             </div>
-                            <Form.Item name="logo" className="hidden">
-                              <Input />
+                            <Form.Item name="logo" style={{ display: 'none' }}>
+                              <Input type="hidden" />
                             </Form.Item>
                           </div>
 
-                          {/* Column 2: Custom Diagnostics Background Image */}
-                          <div className="space-y-4 text-center border-r border-slate-100 pr-6 last:border-r-0 last:pr-0">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Diagnostics Background Image</span>
-                            <div className="mx-auto w-full h-32 rounded-2xl border border-slate-250 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                              {bgPreview ? (
-                                <img src={bgPreview} alt="Background Preview" className="w-full h-full object-cover" />
-                              ) : (
-                                <PictureOutlined className="text-3xl text-slate-300" />
-                              )}
+                          {/* Column 2: Public Hair Test Background Image Dropzone */}
+                          <div className="space-y-4 text-center bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                            <div>
+                              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider block mb-1">Diagnostics Background Image</span>
+                              <p className="text-[11px] text-slate-400 font-medium mb-4">Background banner for patient hair analysis wizard</p>
+                              
+                              <div className="mx-auto w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-900 flex items-center justify-center overflow-hidden relative group shadow-inner">
+                                {bgPreview ? (
+                                  <>
+                                    <img src={bgPreview} alt="Background Preview" className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform" />
+                                    <div className="absolute top-2 right-2 bg-slate-950/80 text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 backdrop-blur-md">
+                                      Live Preview
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-center p-3 text-slate-400">
+                                    <PictureOutlined className="text-4xl text-slate-500 mb-1" />
+                                    <span className="text-[11px] font-bold text-slate-400 block">Default Studio Background</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex gap-2 justify-center">
+
+                            <div className="flex items-center justify-center gap-2 pt-2">
                               <input
                                 type="file"
                                 accept="image/*"
                                 id="bg-upload-input"
                                 className="hidden"
+                                style={{ display: 'none' }}
                                 onChange={handleBgChange}
                               />
                               <label
                                 htmlFor="bg-upload-input"
-                                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer transition-colors"
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer transition-colors shadow-sm"
                               >
-                                Upload Background Image
+                                <UploadOutlined /> {bgPreview ? 'Change Banner' : 'Upload Banner'}
                               </label>
                               {bgPreview && (
                                 <Button
-                                  type="default"
+                                  type="text"
                                   danger
+                                  icon={<DeleteOutlined />}
                                   onClick={() => {
                                     form.setFieldsValue({ backgroundImage: '' });
                                     setBgPreview(null);
                                   }}
-                                  className="rounded-xl text-xs font-bold border-red-200"
+                                  className="rounded-xl text-xs font-bold"
                                 >
-                                  Remove Image
+                                  Remove
                                 </Button>
                               )}
                             </div>
-                            <Form.Item name="backgroundImage" className="hidden">
-                              <Input />
+                            <Form.Item name="backgroundImage" style={{ display: 'none' }}>
+                              <Input type="hidden" />
                             </Form.Item>
                           </div>
 
-                          {/* Column 3: Color Override Choice */}
-                          <div className="space-y-4 flex flex-col justify-between">
+                          {/* Column 3: Custom Accent Color & Live Studio Preview */}
+                          <div className="space-y-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                             <div>
-                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Diagnostics Theme Accent Color</span>
-                              <p className="text-slate-400 text-[10px] leading-normal mb-4">
-                                Pick the brand color accent used for dynamic wizard indicators, checkboxes, and buttons.
-                              </p>
+                              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider block mb-1">Theme Accent Color</span>
+                              <p className="text-[11px] text-slate-400 font-medium mb-3">Primary brand color applied across your patient portals</p>
+
+                              {/* Preset Color Swatches */}
+                              <div className="space-y-2 mb-4">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Preset Luxury Palettes</span>
+                                <div className="grid grid-cols-6 gap-2">
+                                  {presetColors.map((color) => (
+                                    <button
+                                      key={color.hex}
+                                      type="button"
+                                      title={color.label}
+                                      onClick={() => {
+                                        form.setFieldsValue({ themeColor: color.hex });
+                                        setThemeColor(color.hex);
+                                      }}
+                                      style={{ backgroundColor: color.hex }}
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform shadow-xs ${
+                                        themeColor.toLowerCase() === color.hex.toLowerCase() ? 'ring-2 ring-offset-2 ring-slate-800 scale-110' : 'hover:scale-105'
+                                      }`}
+                                    >
+                                      {themeColor.toLowerCase() === color.hex.toLowerCase() && (
+                                        <CheckCircleOutlined className="text-white text-xs" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Hex Input & Picker */}
                               <Form.Item name="themeColor" noStyle>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                                   <input
                                     type="color"
-                                    className="w-12 h-10 p-0.5 border border-slate-200 rounded-xl cursor-pointer shrink-0"
+                                    className="w-9 h-9 p-0.5 border-0 rounded-lg cursor-pointer shrink-0 bg-transparent"
                                     value={themeColor}
                                     onChange={(e) => {
                                       const val = e.target.value;
@@ -719,8 +793,8 @@ export default function ClinicSettingsPage() {
                                     value={themeColor}
                                     placeholder="#0d9488"
                                     maxLength={7}
-                                    size="large"
-                                    className="font-mono text-xs uppercase"
+                                    size="middle"
+                                    className="font-mono text-xs font-extrabold uppercase border-slate-200"
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       form.setFieldsValue({ themeColor: val });
@@ -729,6 +803,31 @@ export default function ClinicSettingsPage() {
                                   />
                                 </div>
                               </Form.Item>
+                            </div>
+
+                            {/* Live UI Theme Mock Preview */}
+                            <div className="pt-3 border-t border-slate-100">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Live Element Preview</span>
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <button
+                                    type="button"
+                                    style={{ backgroundColor: themeColor }}
+                                    className="px-3 py-1 rounded-lg text-white text-[11px] font-bold shadow-xs transition-opacity hover:opacity-90"
+                                  >
+                                    Primary Button
+                                  </button>
+                                  <span
+                                    style={{ color: themeColor, borderColor: `${themeColor}40`, backgroundColor: `${themeColor}15` }}
+                                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border"
+                                  >
+                                    Active Badge
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full transition-all" style={{ width: '70%', backgroundColor: themeColor }} />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -741,9 +840,10 @@ export default function ClinicSettingsPage() {
                           icon={<SaveOutlined />}
                           size="large"
                           loading={saving}
-                          className="px-8 rounded-xl font-bold bg-teal-600 hover:bg-teal-700"
+                          style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                          className="px-8 rounded-xl font-extrabold text-white shadow-md transition-all hover:opacity-90"
                         >
-                          Save Theme & Profile settings
+                          Save Theme & Profile Settings
                         </Button>
                       </div>
                     </>
@@ -826,8 +926,8 @@ export default function ClinicSettingsPage() {
                             )}
                           </div>
                           <div>
-                            <Tag color={roleColors[currentUserRole] || 'default'} className="font-bold text-xs px-3 py-1 rounded-full">
-                              {roleLabels[currentUserRole] || currentUserRole}
+                            <Tag color={roleColors[currentUserRole] || 'default'} className="font-bold text-xs px-3 py-1 rounded-full uppercase">
+                              {formatRoleLabel(currentUserRole)}
                             </Tag>
                           </div>
                           <div>
@@ -836,6 +936,7 @@ export default function ClinicSettingsPage() {
                               accept="image/*"
                               id="user-avatar-upload-input"
                               className="hidden"
+                              style={{ display: 'none' }}
                               onChange={handleAvatarChange}
                             />
                             <label
@@ -845,8 +946,8 @@ export default function ClinicSettingsPage() {
                               Upload Profile Photo
                             </label>
                           </div>
-                          <Form.Item name="avatar" className="hidden">
-                            <Input />
+                          <Form.Item name="avatar" style={{ display: 'none' }}>
+                            <Input type="hidden" />
                           </Form.Item>
                         </div>
                       </Card>
@@ -939,7 +1040,7 @@ export default function ClinicSettingsPage() {
           staffForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         centered
         width={540}
       >
