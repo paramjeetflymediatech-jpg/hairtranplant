@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../index';
 
-export type UserRole = 'SUPER_ADMIN' | 'CLINIC_ADMIN' | 'DOCTOR' | 'CONSULTANT' | 'RECEPTIONIST' | 'PATIENT';
+export type UserRole = 'SUPER_ADMIN' | 'CLINIC_ADMIN' | 'DOCTOR' | 'CONSULTANT' | 'RECEPTIONIST' | 'PATIENT' | string;
 
 export interface UserAttributes {
   id: string;
@@ -41,14 +41,13 @@ export const User = sequelize.define<UserInstance>(
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('SUPER_ADMIN', 'CLINIC_ADMIN', 'DOCTOR', 'CONSULTANT', 'RECEPTIONIST', 'PATIENT'),
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'PATIENT',
     },

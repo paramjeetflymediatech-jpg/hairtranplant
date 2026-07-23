@@ -63,10 +63,30 @@ export async function ensureDbSynced() {
           await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
           await connection.end();
         } catch (dbErr) {
-          // Ignore connection error here; sequelize.sync() will log if unreachable
+          // Ignore connection error here
         }
       }
-      await sequelize.sync();
+
+      await sequelize.sync({ alter: true });
+
+      // Modify existing columns in MySQL to LONGTEXT to support large base64 hair photo payloads
+      try {
+        await sequelize.query('ALTER TABLE `leads` MODIFY COLUMN `photos` LONGTEXT NULL;');
+      } catch (e) {
+        // Fallback for non-MySQL or column addition
+        try {
+          await sequelize.query('ALTER TABLE `leads` ADD COLUMN `photos` LONGTEXT NULL;');
+        } catch (e2) {}
+      }
+
+      try {
+        await sequelize.query('ALTER TABLE `leads` MODIFY COLUMN `hairAnalysisData` LONGTEXT NULL;');
+      } catch (e) {
+        try {
+          await sequelize.query('ALTER TABLE `leads` ADD COLUMN `hairAnalysisData` LONGTEXT NULL;');
+        } catch (e2) {}
+      }
+
       isSynced = true;
     } catch (err) {
       console.error('Failed to sync DB schema:', err);

@@ -5,46 +5,79 @@ import { verifyPassword, signToken } from '@/lib/auth';
 export async function POST(req: NextRequest) {
   try {
     await ensureDbSynced();
-    const { email, password } = await req.json();
+    const { email, password, clinicSlug, clinicId } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const user = await User.findOne({
-      where: { email },
+    const formattedEmail = email.toLowerCase().trim();
+
+    const candidateUsers = await User.findAll({
+      where: { email: formattedEmail },
       include: [{ model: Clinic, as: 'clinic' }],
     });
 
-    if (!user || !user.password) {
+    if (!candidateUsers || candidateUsers.length === 0) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const isMatch = await verifyPassword(password, user.password);
-    if (!isMatch) {
+    // Filter by clinic if specified
+    let targetCandidates = candidateUsers;
+    if (clinicSlug) {
+      targetCandidates = candidateUsers.filter((u: any) => u.clinic?.slug === clinicSlug);
+    } else if (clinicId) {
+      targetCandidates = candidateUsers.filter((u: any) => u.clinicId === clinicId);
+    }
+
+    if (targetCandidates.length === 0) {
+      targetCandidates = candidateUsers;
+    }
+
+    let authenticatedUser: any = null;
+    let isStopped = false;
+
+    for (const candidate of targetCandidates) {
+      if (!candidate.password) continue;
+      const isMatch = await verifyPassword(password, candidate.password);
+      if (isMatch) {
+        if (!candidate.isActive) {
+          isStopped = true;
+          continue;
+        }
+        authenticatedUser = candidate;
+        break;
+      }
+    }
+
+    if (!authenticatedUser) {
+      if (isStopped) {
+        return NextResponse.json({ error: 'Your account has been stopped/deactivated by your administrator.' }, { status: 403 });
+      }
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    user.lastLoginAt = new Date();
-    await user.save();
+    authenticatedUser.lastLoginAt = new Date();
+    await authenticatedUser.save();
 
     const token = signToken({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      clinicId: user.clinicId,
+      userId: authenticatedUser.id,
+      email: authenticatedUser.email,
+      name: authenticatedUser.name,
+      role: authenticatedUser.role,
+      clinicId: authenticatedUser.clinicId,
     });
 
     const res = NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        clinicId: user.clinicId,
+        id: authenticatedUser.id,
+        name: authenticatedUser.name,
+        email: authenticatedUser.email,
+        role: authenticatedUser.role,
+        avatar: authenticatedUser.avatar,
+        clinicId: authenticatedUser.clinicId,
+        clinic: authenticatedUser.clinic,
       },
       token,
     });

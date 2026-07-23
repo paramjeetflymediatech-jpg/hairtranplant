@@ -22,6 +22,8 @@ export interface LeadAttributes {
   assignedTo?: string;
   estimatedValue?: number;
   notes?: string;
+  photos?: string; // JSON string of photo views { front, top, sides, back }
+  hairAnalysisData?: string; // JSON string of full AI analysis results
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -68,6 +70,8 @@ export const Lead = sequelize.define<LeadInstance>(
       defaultValue: 0,
     },
     notes: DataTypes.TEXT,
+    photos: DataTypes.TEXT('long'),
+    hairAnalysisData: DataTypes.TEXT('long'),
   },
   {
     tableName: 'leads',

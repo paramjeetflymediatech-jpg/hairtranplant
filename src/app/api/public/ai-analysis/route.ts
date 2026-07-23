@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Lead, Clinic } from '@/db/models';
+import { Lead, Clinic, ensureDbSynced } from '@/db/models';
 import { runAIHairAnalysis } from '@/lib/ai-engine';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSynced();
     const { name, email, phone, photos, notes: clientNotes, clinicSlug } = await req.json();
 
     if (!name || !email) {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Clinic with slug "${targetSlug}" not found` }, { status: 404 });
     }
 
-    // Run the computer vision analysis (Gemini / fallback simulator)
+    // Run the computer vision analysis
     const aiResult = await runAIHairAnalysis(photos);
 
     // Build the annotation notes summarizing the diagnostics
@@ -32,15 +33,17 @@ export async function POST(req: NextRequest) {
       notesSummary = `${clientNotes}. ${notesSummary}`;
     }
 
-    // Create the lead record
+    // Create the lead record tied to this specific clinic, saving photos & full AI analysis
     const lead = await Lead.create({
       clinicId: clinic.id,
       name,
       email,
       phone: phone || '',
-      source: 'Android App',
+      source: 'Online Hair Test',
       status: 'NEW',
       notes: notesSummary,
+      photos: JSON.stringify(photos),
+      hairAnalysisData: JSON.stringify(aiResult),
     });
 
     return NextResponse.json({

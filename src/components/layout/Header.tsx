@@ -1,12 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Bell, Sparkles, ChevronDown, User, Shield, HelpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Bell, Sparkles, ChevronDown, User, Shield, CheckCircle2, AlertCircle, Volume2, Camera } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
+import { playAlertChime } from '@/lib/audio-alert';
+import Swal from 'sweetalert2';
 
 interface HeaderProps {
   userRole?: string;
   userName?: string;
+}
+
+interface NotificationItem {
+  id: string;
+  title: string;
+  desc: string;
+  time: string;
+  type: 'success' | 'info' | 'warning';
 }
 
 export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }: HeaderProps) {
@@ -14,11 +24,77 @@ export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const notifications = [
+  const [notificationList, setNotificationList] = useState<NotificationItem[]>([
     { id: '1', title: 'Surgery Completed', desc: 'FUE 3,100 grafts completed for Michael Vance.', time: '10m ago', type: 'success' },
     { id: '2', title: 'New Lead Inbound', desc: 'Julian Thorne requested online graft assessment.', time: '1h ago', type: 'info' },
-    { id: '3', title: 'Follow-Up Due', desc: '6-Month photo evaluation scheduled for today.', time: '3h ago', type: 'warning' },
-  ];
+  ]);
+
+  const [hasNewAlert, setHasNewAlert] = useState(false);
+  const knownLeadIdsRef = useRef<Set<string>>(new Set());
+  const initialLoadRef = useRef(true);
+
+  // Poll for new hair test submissions & leads
+  useEffect(() => {
+    async function checkNewLeads() {
+      try {
+        const res = await fetch('/api/leads');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.leads || !Array.isArray(data.leads)) return;
+
+        const currentLeads = data.leads;
+
+        if (initialLoadRef.current) {
+          // Record baseline lead IDs on first load
+          currentLeads.forEach((lead: any) => knownLeadIdsRef.current.add(lead.id));
+          initialLoadRef.current = false;
+          return;
+        }
+
+        // Find newly submitted leads that weren't in the baseline
+        const newSubmissions = currentLeads.filter((lead: any) => !knownLeadIdsRef.current.has(lead.id));
+
+        if (newSubmissions.length > 0) {
+          // Play Alert Chime Sound
+          playAlertChime();
+          setHasNewAlert(true);
+
+          newSubmissions.forEach((newLead: any) => {
+            knownLeadIdsRef.current.add(newLead.id);
+
+            // Add notification to list
+            const newNotif: NotificationItem = {
+              id: newLead.id,
+              title: '🔔 New Hair Test Lead!',
+              desc: `${newLead.name} submitted a new hair test for your clinic.`,
+              time: 'Just now',
+              type: 'info',
+            };
+            setNotificationList((prev) => [newNotif, ...prev]);
+
+            // Show Toast Alert Notification
+            Swal.fire({
+              toast: true,
+              position: 'top-end',
+              icon: 'info',
+              title: `🔔 New Hair Test Received!`,
+              html: `<b>${newLead.name}</b> just submitted a hair diagnostic test.<br/><a href="/leads" style="color:#0d9488;font-weight:bold;text-decoration:underline;margin-top:4px;display:inline-block;">View in Leads Pipeline →</a>`,
+              showConfirmButton: false,
+              timer: 6000,
+              timerProgressBar: true,
+            });
+          });
+        }
+      } catch (err) {
+        console.error('Lead polling error:', err);
+      }
+    }
+
+    checkNewLeads();
+    const interval = setInterval(checkNewLeads, 8000); // Check every 8 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
@@ -51,24 +127,40 @@ export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }
           {/* Notifications Dropdown */}
           <div className="relative">
             <button
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              onClick={() => {
+                setNotificationsOpen(!notificationsOpen);
+                setHasNewAlert(false);
+              }}
               className="relative p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-teal-500 animate-ping" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-teal-600" />
+              {hasNewAlert && (
+                <>
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-teal-600 border border-white" />
+                </>
+              )}
             </button>
 
             {notificationsOpen && (
               <div className="absolute right-0 mt-2 w-80 py-2 rounded-2xl bg-white border border-slate-200 shadow-xl z-50">
                 <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
                   <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Notifications</span>
-                  <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                    3 New
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={playAlertChime}
+                      className="text-[10px] font-bold text-slate-600 hover:text-teal-700 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                      title="Test Audio Alert Ring"
+                    >
+                      <Volume2 className="w-3 h-3 text-teal-600" /> Ring Sound
+                    </button>
+                    <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                      {notificationList.length} Items
+                    </span>
+                  </div>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                  {notifications.map((n) => (
+                  {notificationList.map((n) => (
                     <div key={n.id} className="p-3.5 hover:bg-slate-50 transition-colors flex gap-3 items-start">
                       {n.type === 'success' ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -82,6 +174,11 @@ export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }
                       </div>
                     </div>
                   ))}
+                </div>
+                <div className="p-2 border-t border-slate-100 text-center">
+                  <a href="/leads" className="text-[11px] font-bold text-teal-700 hover:underline block py-1">
+                    View Leads Pipeline →
+                  </a>
                 </div>
               </div>
             )}
@@ -107,10 +204,10 @@ export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }
               <div className="absolute right-0 mt-2 w-56 py-2 rounded-2xl bg-white border border-slate-200 shadow-xl z-50 text-xs">
                 <div className="px-4 py-2 border-b border-slate-100">
                   <p className="font-bold text-slate-900">{userName}</p>
-                  <p className="text-[10px] text-slate-500">admin@apexhair.com</p>
+                  <p className="text-[10px] text-slate-500">Clinic Administrator</p>
                 </div>
-                <a href="/portal" className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-700 transition-colors font-medium">
-                  <User className="w-4 h-4 text-teal-600" /> Patient Portal Mode
+                <a href="/settings" className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-700 transition-colors font-medium">
+                  <User className="w-4 h-4 text-teal-600" /> Clinic Settings & Team
                 </a>
                 <a href="/settings/billing" className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-700 transition-colors font-medium">
                   <Shield className="w-4 h-4 text-slate-500" /> Subscription Settings

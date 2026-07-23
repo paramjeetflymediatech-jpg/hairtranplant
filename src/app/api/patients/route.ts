@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (body.email) {
-      const existingUser = await User.findOne({ where: { email: body.email } });
+      const existingUser = await User.findOne({ where: { email: body.email, clinicId } });
       if (!existingUser) {
         const hashedPassword = await hashPassword('password123');
         await User.create({
