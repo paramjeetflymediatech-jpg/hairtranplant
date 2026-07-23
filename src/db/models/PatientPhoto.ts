@@ -17,7 +17,7 @@ export interface PatientPhotoAttributes {
   patientId: string;
   type: PhotoType;
   imageUrl: string;
-  capturedAt: string; // YYYY-MM-DD
+  capturedAt: string;
   notes?: string;
   isPublicConsent: boolean;
   createdAt?: Date;
@@ -26,20 +26,10 @@ export interface PatientPhotoAttributes {
 
 export type PatientPhotoCreationAttributes = Optional<PatientPhotoAttributes, 'id' | 'isPublicConsent'>;
 
-export class PatientPhoto extends Model<PatientPhotoAttributes, PatientPhotoCreationAttributes> implements PatientPhotoAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public type!: PhotoType;
-  public imageUrl!: string;
-  public capturedAt!: string;
-  public notes?: string;
-  public isPublicConsent!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface PatientPhotoInstance extends Model<PatientPhotoAttributes, PatientPhotoCreationAttributes>, PatientPhotoAttributes {}
 
-PatientPhoto.init(
+export const PatientPhoto = sequelize.define<PatientPhotoInstance>(
+  'PatientPhoto',
   {
     id: {
       type: DataTypes.UUID,
@@ -73,7 +63,6 @@ PatientPhoto.init(
     },
   },
   {
-    sequelize,
     tableName: 'patient_photos',
     timestamps: true,
   }

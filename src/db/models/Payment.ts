@@ -20,21 +20,10 @@ export interface PaymentAttributes {
 
 export type PaymentCreationAttributes = Optional<PaymentAttributes, 'id' | 'currency' | 'status'>;
 
-export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes> implements PaymentAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public treatmentPlanId?: string;
-  public amount!: number;
-  public currency!: string;
-  public status!: PaymentStatus;
-  public paymentMethod!: PaymentMethod;
-  public transactionId?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface PaymentInstance extends Model<PaymentAttributes, PaymentCreationAttributes>, PaymentAttributes {}
 
-Payment.init(
+export const Payment = sequelize.define<PaymentInstance>(
+  'Payment',
   {
     id: {
       type: DataTypes.UUID,
@@ -69,7 +58,6 @@ Payment.init(
     transactionId: DataTypes.STRING,
   },
   {
-    sequelize,
     tableName: 'payments',
     timestamps: true,
   }

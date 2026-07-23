@@ -19,23 +19,10 @@ export interface ConsultationAttributes {
 
 export type ConsultationCreationAttributes = Optional<ConsultationAttributes, 'id'>;
 
-export class Consultation extends Model<ConsultationAttributes, ConsultationCreationAttributes> implements ConsultationAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public doctorId?: string;
-  public consultationDate!: string;
-  public hairLossStage?: string;
-  public diagnosisNotes?: string;
-  public recommendations?: string;
-  public estimatedGrafts?: number;
-  public recommendedProcedure?: 'FUE' | 'FUT' | 'DHI' | 'COMBINATION';
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface ConsultationInstance extends Model<ConsultationAttributes, ConsultationCreationAttributes>, ConsultationAttributes {}
 
-Consultation.init(
+export const Consultation = sequelize.define<ConsultationInstance>(
+  'Consultation',
   {
     id: {
       type: DataTypes.UUID,
@@ -63,7 +50,6 @@ Consultation.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'consultations',
     timestamps: true,
   }

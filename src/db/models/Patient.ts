@@ -10,8 +10,8 @@ export interface PatientAttributes {
   dateOfBirth?: string;
   gender?: string;
   profilePhoto?: string;
-  hairLossStage?: string; // e.g. "Norwood IV", "Norwood V"
-  source?: string; // e.g. "Instagram", "Google Ads", "Referral"
+  hairLossStage?: string;
+  source?: string;
   status: 'LEAD' | 'CONSULTATION' | 'SCHEDULED' | 'POST_OP' | 'COMPLETED' | 'INACTIVE';
   notes?: string;
   createdAt?: Date;
@@ -20,24 +20,10 @@ export interface PatientAttributes {
 
 export type PatientCreationAttributes = Optional<PatientAttributes, 'id' | 'status'>;
 
-export class Patient extends Model<PatientAttributes, PatientCreationAttributes> implements PatientAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public name!: string;
-  public email?: string;
-  public phone?: string;
-  public dateOfBirth?: string;
-  public gender?: string;
-  public profilePhoto?: string;
-  public hairLossStage?: string;
-  public source?: string;
-  public status!: 'LEAD' | 'CONSULTATION' | 'SCHEDULED' | 'POST_OP' | 'COMPLETED' | 'INACTIVE';
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface PatientInstance extends Model<PatientAttributes, PatientCreationAttributes>, PatientAttributes {}
 
-Patient.init(
+export const Patient = sequelize.define<PatientInstance>(
+  'Patient',
   {
     id: {
       type: DataTypes.UUID,
@@ -66,7 +52,6 @@ Patient.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'patients',
     timestamps: true,
   }

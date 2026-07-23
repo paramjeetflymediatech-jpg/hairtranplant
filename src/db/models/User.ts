@@ -20,22 +20,10 @@ export interface UserAttributes {
 
 export type UserCreationAttributes = Optional<UserAttributes, 'id' | 'isActive'>;
 
-export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: string;
-  public clinicId?: string | null;
-  public name!: string;
-  public email!: string;
-  public password?: string;
-  public role!: UserRole;
-  public avatar?: string;
-  public phone?: string;
-  public isActive!: boolean;
-  public lastLoginAt?: Date;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, UserAttributes {}
 
-User.init(
+export const User = sequelize.define<UserInstance>(
+  'User',
   {
     id: {
       type: DataTypes.UUID,
@@ -73,7 +61,6 @@ User.init(
     lastLoginAt: DataTypes.DATE,
   },
   {
-    sequelize,
     tableName: 'users',
     timestamps: true,
   }

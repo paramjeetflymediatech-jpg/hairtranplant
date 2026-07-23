@@ -9,7 +9,7 @@ export interface FollowUpAttributes {
   clinicId: string;
   patientId: string;
   surgeryId?: string;
-  followUpDate: string; // YYYY-MM-DD
+  followUpDate: string;
   type: FollowUpType;
   status: FollowUpStatus;
   notes?: string;
@@ -19,20 +19,10 @@ export interface FollowUpAttributes {
 
 export type FollowUpCreationAttributes = Optional<FollowUpAttributes, 'id' | 'status'>;
 
-export class FollowUp extends Model<FollowUpAttributes, FollowUpCreationAttributes> implements FollowUpAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public surgeryId?: string;
-  public followUpDate!: string;
-  public type!: FollowUpType;
-  public status!: FollowUpStatus;
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface FollowUpInstance extends Model<FollowUpAttributes, FollowUpCreationAttributes>, FollowUpAttributes {}
 
-FollowUp.init(
+export const FollowUp = sequelize.define<FollowUpInstance>(
+  'FollowUp',
   {
     id: {
       type: DataTypes.UUID,
@@ -63,7 +53,6 @@ FollowUp.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'follow_ups',
     timestamps: true,
   }

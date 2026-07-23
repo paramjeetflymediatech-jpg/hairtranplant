@@ -15,17 +15,10 @@ export interface SurgeryGraftAttributes {
 
 export type SurgeryGraftCreationAttributes = Optional<SurgeryGraftAttributes, 'id'>;
 
-export class SurgeryGraft extends Model<SurgeryGraftAttributes, SurgeryGraftCreationAttributes> implements SurgeryGraftAttributes {
-  public id!: string;
-  public surgeryId!: string;
-  public graftType!: GraftType;
-  public quantity!: number;
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface SurgeryGraftInstance extends Model<SurgeryGraftAttributes, SurgeryGraftCreationAttributes>, SurgeryGraftAttributes {}
 
-SurgeryGraft.init(
+export const SurgeryGraft = sequelize.define<SurgeryGraftInstance>(
+  'SurgeryGraft',
   {
     id: {
       type: DataTypes.UUID,
@@ -48,7 +41,6 @@ SurgeryGraft.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'surgery_grafts',
     timestamps: true,
   }

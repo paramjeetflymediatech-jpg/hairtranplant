@@ -19,7 +19,7 @@ export interface LeadAttributes {
   phone?: string;
   source?: string;
   status: LeadStatus;
-  assignedTo?: string; // userId
+  assignedTo?: string;
   estimatedValue?: number;
   notes?: string;
   createdAt?: Date;
@@ -28,22 +28,10 @@ export interface LeadAttributes {
 
 export type LeadCreationAttributes = Optional<LeadAttributes, 'id' | 'status'>;
 
-export class Lead extends Model<LeadAttributes, LeadCreationAttributes> implements LeadAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public name!: string;
-  public email?: string;
-  public phone?: string;
-  public source?: string;
-  public status!: LeadStatus;
-  public assignedTo?: string;
-  public estimatedValue?: number;
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface LeadInstance extends Model<LeadAttributes, LeadCreationAttributes>, LeadAttributes {}
 
-Lead.init(
+export const Lead = sequelize.define<LeadInstance>(
+  'Lead',
   {
     id: {
       type: DataTypes.UUID,
@@ -82,7 +70,6 @@ Lead.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'leads',
     timestamps: true,
   }

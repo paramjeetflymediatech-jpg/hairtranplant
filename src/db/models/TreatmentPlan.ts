@@ -20,21 +20,10 @@ export interface TreatmentPlanAttributes {
 
 export type TreatmentPlanCreationAttributes = Optional<TreatmentPlanAttributes, 'id' | 'status'>;
 
-export class TreatmentPlan extends Model<TreatmentPlanAttributes, TreatmentPlanCreationAttributes> implements TreatmentPlanAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public doctorId?: string;
-  public procedure!: ProcedureType;
-  public estimatedGrafts!: number;
-  public estimatedCost!: number;
-  public description?: string;
-  public status!: TreatmentPlanStatus;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface TreatmentPlanInstance extends Model<TreatmentPlanAttributes, TreatmentPlanCreationAttributes>, TreatmentPlanAttributes {}
 
-TreatmentPlan.init(
+export const TreatmentPlan = sequelize.define<TreatmentPlanInstance>(
+  'TreatmentPlan',
   {
     id: {
       type: DataTypes.UUID,
@@ -69,7 +58,6 @@ TreatmentPlan.init(
     },
   },
   {
-    sequelize,
     tableName: 'treatment_plans',
     timestamps: true,
   }

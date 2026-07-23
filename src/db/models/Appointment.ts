@@ -9,9 +9,9 @@ export interface AppointmentAttributes {
   clinicId: string;
   patientId: string;
   doctorId?: string;
-  appointmentDate: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  appointmentDate: string;
+  startTime: string;
+  endTime: string;
   type: AppointmentType;
   status: AppointmentStatus;
   notes?: string;
@@ -21,22 +21,10 @@ export interface AppointmentAttributes {
 
 export type AppointmentCreationAttributes = Optional<AppointmentAttributes, 'id' | 'status'>;
 
-export class Appointment extends Model<AppointmentAttributes, AppointmentCreationAttributes> implements AppointmentAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public doctorId?: string;
-  public appointmentDate!: string;
-  public startTime!: string;
-  public endTime!: string;
-  public type!: AppointmentType;
-  public status!: AppointmentStatus;
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface AppointmentInstance extends Model<AppointmentAttributes, AppointmentCreationAttributes>, AppointmentAttributes {}
 
-Appointment.init(
+export const Appointment = sequelize.define<AppointmentInstance>(
+  'Appointment',
   {
     id: {
       type: DataTypes.UUID,
@@ -75,7 +63,6 @@ Appointment.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'appointments',
     timestamps: true,
   }

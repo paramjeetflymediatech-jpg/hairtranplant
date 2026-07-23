@@ -10,11 +10,11 @@ export interface SurgeryAttributes {
   patientId: string;
   doctorId?: string;
   procedure: ProcedureType;
-  surgeryDate: string; // YYYY-MM-DD
+  surgeryDate: string;
   plannedGrafts: number;
   extractedGrafts: number;
   implantedGrafts: number;
-  surgeryDuration?: string; // e.g. "6h 30m"
+  surgeryDuration?: string;
   status: SurgeryStatus;
   notes?: string;
   createdAt?: Date;
@@ -23,24 +23,10 @@ export interface SurgeryAttributes {
 
 export type SurgeryCreationAttributes = Optional<SurgeryAttributes, 'id' | 'extractedGrafts' | 'implantedGrafts' | 'status'>;
 
-export class Surgery extends Model<SurgeryAttributes, SurgeryCreationAttributes> implements SurgeryAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public doctorId?: string;
-  public procedure!: ProcedureType;
-  public surgeryDate!: string;
-  public plannedGrafts!: number;
-  public extractedGrafts!: number;
-  public implantedGrafts!: number;
-  public surgeryDuration?: string;
-  public status!: SurgeryStatus;
-  public notes?: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface SurgeryInstance extends Model<SurgeryAttributes, SurgeryCreationAttributes>, SurgeryAttributes {}
 
-Surgery.init(
+export const Surgery = sequelize.define<SurgeryInstance>(
+  'Surgery',
   {
     id: {
       type: DataTypes.UUID,
@@ -84,7 +70,6 @@ Surgery.init(
     notes: DataTypes.TEXT,
   },
   {
-    sequelize,
     tableName: 'surgeries',
     timestamps: true,
   }

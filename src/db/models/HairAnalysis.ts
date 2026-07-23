@@ -11,11 +11,11 @@ export interface HairAnalysisAttributes {
   rightPhoto?: string;
   backPhoto?: string;
   hairLossStage?: string;
-  hairDensity?: string; // e.g. "65 grafts/cm²"
-  donorAreaQuality?: string; // e.g. "Excellent (85/100)"
+  hairDensity?: string;
+  donorAreaQuality?: string;
   estimatedMinGrafts?: number;
   estimatedMaxGrafts?: number;
-  aiAnalysis?: string; // JSON string with detailed breakdown & confidence
+  aiAnalysis?: string;
   doctorVerified: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -23,27 +23,10 @@ export interface HairAnalysisAttributes {
 
 export type HairAnalysisCreationAttributes = Optional<HairAnalysisAttributes, 'id' | 'doctorVerified'>;
 
-export class HairAnalysis extends Model<HairAnalysisAttributes, HairAnalysisCreationAttributes> implements HairAnalysisAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public patientId!: string;
-  public frontPhoto?: string;
-  public topPhoto?: string;
-  public leftPhoto?: string;
-  public rightPhoto?: string;
-  public backPhoto?: string;
-  public hairLossStage?: string;
-  public hairDensity?: string;
-  public donorAreaQuality?: string;
-  public estimatedMinGrafts?: number;
-  public estimatedMaxGrafts?: number;
-  public aiAnalysis?: string;
-  public doctorVerified!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface HairAnalysisInstance extends Model<HairAnalysisAttributes, HairAnalysisCreationAttributes>, HairAnalysisAttributes {}
 
-HairAnalysis.init(
+export const HairAnalysis = sequelize.define<HairAnalysisInstance>(
+  'HairAnalysis',
   {
     id: {
       type: DataTypes.UUID,
@@ -75,7 +58,6 @@ HairAnalysis.init(
     },
   },
   {
-    sequelize,
     tableName: 'hair_analyses',
     timestamps: true,
   }

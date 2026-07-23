@@ -23,27 +23,10 @@ export interface ClinicAttributes {
 
 export type ClinicCreationAttributes = Optional<ClinicAttributes, 'id' | 'subscriptionPlan' | 'subscriptionStatus'>;
 
-export class Clinic extends Model<ClinicAttributes, ClinicCreationAttributes> implements ClinicAttributes {
-  public id!: string;
-  public name!: string;
-  public slug!: string;
-  public email!: string;
-  public phone?: string;
-  public logo?: string;
-  public backgroundImage?: string;
-  public themeColor?: string;
-  public address?: string;
-  public city?: string;
-  public state?: string;
-  public country?: string;
-  public timezone?: string;
-  public subscriptionPlan!: 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
-  public subscriptionStatus!: 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'CANCELLED';
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface ClinicInstance extends Model<ClinicAttributes, ClinicCreationAttributes>, ClinicAttributes {}
 
-Clinic.init(
+export const Clinic = sequelize.define<ClinicInstance>(
+  'Clinic',
   {
     id: {
       type: DataTypes.UUID,
@@ -85,7 +68,6 @@ Clinic.init(
     },
   },
   {
-    sequelize,
     tableName: 'clinics',
     timestamps: true,
   }

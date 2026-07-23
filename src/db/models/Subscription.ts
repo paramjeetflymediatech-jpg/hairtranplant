@@ -10,8 +10,8 @@ export interface SubscriptionAttributes {
   clinicId: string;
   plan: PlanType;
   status: SubStatus;
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  startDate: string;
+  endDate: string;
   billingCycle: BillingCycle;
   amount: number;
   createdAt?: Date;
@@ -20,20 +20,10 @@ export interface SubscriptionAttributes {
 
 export type SubscriptionCreationAttributes = Optional<SubscriptionAttributes, 'id' | 'status' | 'billingCycle'>;
 
-export class Subscription extends Model<SubscriptionAttributes, SubscriptionCreationAttributes> implements SubscriptionAttributes {
-  public id!: string;
-  public clinicId!: string;
-  public plan!: PlanType;
-  public status!: SubStatus;
-  public startDate!: string;
-  public endDate!: string;
-  public billingCycle!: BillingCycle;
-  public amount!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-}
+export interface SubscriptionInstance extends Model<SubscriptionAttributes, SubscriptionCreationAttributes>, SubscriptionAttributes {}
 
-Subscription.init(
+export const Subscription = sequelize.define<SubscriptionInstance>(
+  'Subscription',
   {
     id: {
       type: DataTypes.UUID,
@@ -71,7 +61,6 @@ Subscription.init(
     },
   },
   {
-    sequelize,
     tableName: 'subscriptions',
     timestamps: true,
   }
