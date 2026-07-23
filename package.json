@@ -8,7 +8,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "seed": "npx tsx src/db/seed.ts",
-    "migrate": "npx tsx src/db/migrate.ts"
+    "migrate": "npx tsx src/db/migrate.ts",
+    "create-super-admin": "npx tsx src/scripts/create-superadmin.ts"
   },
   "keywords": [],
   "author": "",
