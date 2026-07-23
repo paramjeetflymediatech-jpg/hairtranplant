@@ -10,8 +10,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  webpack: (config) => {
-    config.externals = [...(config.externals || []), 'sqlite3', 'mysql2'];
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [...(config.externals || []), 'sqlite3', 'mysql2', 'sequelize'];
+    }
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': path.resolve(__dirname, 'src'),
