@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { THEME } from '../config/theme';
 
 interface ClinicHomeScreenProps {
   onTakeTest: () => void;
@@ -47,7 +48,7 @@ export default function ClinicHomeScreen({ onTakeTest, onGoToPortal, onBack }: C
           <Text style={styles.statLabel}>Successful Cases</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statNumber, { color: '#0d9488' }]}>99.2%</Text>
+          <Text style={[styles.statNumber, { color: THEME.primary }]}>99.2%</Text>
           <Text style={styles.statLabel}>Graft Survival</Text>
         </View>
       </View>
@@ -79,12 +80,12 @@ export default function ClinicHomeScreen({ onTakeTest, onGoToPortal, onBack }: C
       </View>
 
       {/* WhatsApp banner */}
-      <View style={[styles.sectionCard, { borderColor: 'rgba(5,150,105,0.2)', backgroundColor: 'rgba(5,150,105,0.04)' }]}>
-        <Text style={[styles.sectionTitle, { color: '#059669', textAlign: 'center' }]}>
+      <View style={[styles.sectionCard, { borderColor: THEME.cardBorder, backgroundColor: 'rgba(214,57,0,0.05)' }]}>
+        <Text style={[styles.sectionTitle, { color: THEME.primary, textAlign: 'center' }]}>
           12-Month WhatsApp Support
         </Text>
         <Text style={styles.supportDesc}>
-          Every transplant client is enrolled in our 12-month post-op recovery tracking. regular photo uploads receive direct surgeon feedback.
+          Every transplant client is enrolled in our 12-month post-op recovery tracking. Regular photo uploads receive direct surgeon feedback.
         </Text>
       </View>
 
@@ -118,7 +119,7 @@ export default function ClinicHomeScreen({ onTakeTest, onGoToPortal, onBack }: C
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: THEME.bg,
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -137,75 +138,80 @@ const styles = StyleSheet.create({
     left: 0,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: THEME.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: THEME.cardBorder,
   },
   headerBackBtnText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.textSecondary,
   },
   headerTitleBrand: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#0d9488',
+    color: THEME.primary,
     marginRight: 6,
   },
   headerTitleNormal: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0f172a',
+    color: THEME.textPrimary,
   },
   heroCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.card,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: THEME.cardBorder,
     padding: 24,
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: THEME.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
   badge: {
-    backgroundColor: 'rgba(13,148,136,0.1)',
+    backgroundColor: THEME.badge,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginBottom: 16,
   },
   badgeText: {
-    color: '#0d9488',
+    color: THEME.badgeText,
     fontSize: 10,
     fontWeight: 'bold',
   },
   heroHeading: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
+    color: THEME.textPrimary,
     textAlign: 'center',
     lineHeight: 28,
     marginBottom: 10,
   },
   locationText: {
     fontSize: 12,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
     marginBottom: 24,
   },
   primaryButton: {
-    backgroundColor: '#0d9488',
+    backgroundColor: THEME.primary,
     borderRadius: 16,
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   primaryButtonText: {
     color: '#ffffff',
@@ -220,36 +226,36 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: THEME.cardBorder,
     padding: 16,
     alignItems: 'center',
   },
   statNumber: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#0f172a',
+    color: THEME.textPrimary,
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 9,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: 'bold',
   },
   sectionCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: THEME.cardBorder,
     padding: 20,
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.primary,
     marginBottom: 16,
   },
   treatmentItem: {
@@ -258,23 +264,23 @@ const styles = StyleSheet.create({
   treatmentTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#0d9488',
+    color: THEME.textPrimary,
     marginBottom: 4,
   },
   treatmentDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     lineHeight: 16,
   },
   supportDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
   },
   divider: {
     height: 1,
-    backgroundColor: '#cbd5e1',
+    backgroundColor: THEME.cardBorder,
     width: '100%',
   },
   portalBox: {
@@ -283,13 +289,13 @@ const styles = StyleSheet.create({
   },
   portalPrompt: {
     fontSize: 12,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#0f172a',
+    borderWidth: 1.5,
+    borderColor: THEME.primary,
     borderRadius: 16,
     height: 50,
     justifyContent: 'center',
@@ -297,7 +303,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   secondaryButtonText: {
-    color: '#0f172a',
+    color: THEME.primary,
     fontWeight: 'bold',
     fontSize: 14,
   },

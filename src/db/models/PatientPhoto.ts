@@ -49,14 +49,14 @@ export const PatientPhoto = sequelize.define<PatientPhotoInstance>(
       allowNull: false,
     },
     imageUrl: {
-      type: DataTypes.TEXT,
+      type: DataTypes.TEXT('long'),
       allowNull: false,
     },
     capturedAt: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    notes: DataTypes.TEXT,
+    notes: DataTypes.TEXT('long'),
     isPublicConsent: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ScrollView, 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ActivityIndicator, 
-  Alert 
+import {
+  ScrollView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../config/apiConfig';
+import { THEME } from '../config/theme';
 
 const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
   'Norwood I': {
@@ -69,9 +71,23 @@ const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: str
   }
 };
 
-export default function PatientPortalScreen({ onBack }: { onBack: () => void }) {
+type Props = {
+  onBack: () => void;
+  onGoToProfile: (token: string, name: string, status: string, phone: string, analyses: any[]) => void;
+  onGoToHistory: (token: string, name: string, status: string, analyses: any[]) => void;
+};
+
+export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHistory }: Props) {
   const [token, setToken] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Tab / Drawer Navigation State
+  const [activeTab, setActiveTab] = useState<'treatment' | 'profile'>('treatment');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Pagination State
+  const ITEMS_PER_PAGE = 3;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Login Form States
   const [emailInput, setEmailInput] = useState('');
@@ -83,6 +99,38 @@ export default function PatientPortalScreen({ onBack }: { onBack: () => void }) 
   const [patientName, setPatientName] = useState('');
   const [patientStatus, setPatientStatus] = useState('');
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+
+  // Past Test List State
+  const [allAnalyses, setAllAnalyses] = useState<any[]>([]);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<any | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Profile Form States
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const openDrawer = () => setDrawerOpen(true);
+  const closeDrawer = () => setDrawerOpen(false);
+
+  const handleDrawerNav = (tab: 'treatment' | 'profile') => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    closeDrawer();
+  };
+
+  const goToProfile = () => {
+    closeDrawer();
+    onGoToProfile(token, patientName, patientStatus, editPhone, allAnalyses);
+  };
+
+  const goToHistory = () => {
+    closeDrawer();
+    onGoToHistory(token, patientName, patientStatus, allAnalyses);
+  };
 
   const fetchPortalData = async (activeToken: string) => {
     setLoadingData(true);
@@ -97,8 +145,12 @@ export default function PatientPortalScreen({ onBack }: { onBack: () => void }) 
           const patient = data.patient;
           setPatientName(patient.name || 'Patient');
           setPatientStatus(patient.status || 'CONSULTATION');
+          setEditName(patient.name || '');
+          setEditPhone(patient.phone || '');
 
           const analyses = patient.hairAnalyses;
+          setAllAnalyses(analyses || []);
+
           if (analyses && analyses.length > 0) {
             const lastAnalysis = analyses[0];
             if (lastAnalysis.aiAnalysis) {
@@ -253,7 +305,7 @@ export default function PatientPortalScreen({ onBack }: { onBack: () => void }) 
             </Text>
           ) : null}
           {result.procedureAssessment?.rationale ? (
-            <Text style={[styles.explanationDesc, { marginTop: 8, color: '#475569' }]}>
+            <Text style={[styles.explanationDesc, { marginTop: 8, color: THEME.textSecondary }]}>
               Rationale: {result.procedureAssessment.rationale}
             </Text>
           ) : null}
@@ -292,7 +344,7 @@ export default function PatientPortalScreen({ onBack }: { onBack: () => void }) 
         {/* 7. CLINICAL OBSERVATIONS */}
         {result.clinicalObservations && result.clinicalObservations.length > 0 && (
           <View style={styles.explanationBox}>
-            <Text style={[styles.explanationTitle, { color: '#0f172a' }]}>Clinical Observations</Text>
+            <Text style={[styles.explanationTitle, { color: THEME.headerBg }]}>Clinical Observations</Text>
             {result.clinicalObservations.map((obs: string, idx: number) => (
               <Text key={idx} style={styles.obsItem}>• {obs}</Text>
             ))}
@@ -304,7 +356,7 @@ export default function PatientPortalScreen({ onBack }: { onBack: () => void }) 
           <View style={styles.explanationBox}>
             <Text style={[styles.explanationTitle, { color: '#059669' }]}>Recommended Next Steps</Text>
             {result.recommendedNextSteps.map((stepStr: string, idx: number) => (
-              <Text key={idx} style={[styles.obsItem, { color: '#475569' }]}>• {stepStr}</Text>
+              <Text key={idx} style={[styles.obsItem, { color: THEME.textSecondary }]}>• {stepStr}</Text>
             ))}
           </View>
         )}
@@ -375,84 +427,453 @@ export default function PatientPortalScreen({ onBack }: { onBack: () => void }) 
     setAnalysisResult(null);
   };
 
+  const handleUpdateProfile = async () => {
+    if (!editName) {
+      Alert.alert('Validation Error', 'Full Name is required.');
+      return;
+    }
+
+    if (newPassword && newPassword !== confirmPassword) {
+      Alert.alert('Validation Error', 'New passwords do not match.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const payload: any = {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+      };
+
+      if (newPassword) {
+        payload.currentPassword = currentPassword;
+        payload.newPassword = newPassword;
+      }
+
+      const res = await fetch(`${BASE_URL}/api/auth/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `graftdesk_session=${token}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+
+      // Update stored session token (the resigned token returned by backend)
+      if (data.token) {
+        await AsyncStorage.setItem('auth_token', data.token);
+        setToken(data.token);
+      }
+
+      setPatientName(data.user.name || 'Patient');
+      setEditName(data.user.name || '');
+      setEditPhone(data.user.phone || '');
+
+      // Clear password fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+
+      Alert.alert('Success', 'Your profile details have been updated successfully.');
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update profile');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Compute paginated slice of history
+  const totalPages = Math.max(1, Math.ceil(allAnalyses.length / ITEMS_PER_PAGE));
+  const pagedAnalyses = allAnalyses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>ASG Patient Portal</Text>
+    <View style={{ flex: 1, backgroundColor: THEME.bg }}>
 
-      {isLoggedIn ? (
-        loadingData ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#0d9488" />
-          </View>
-        ) : (
-          // Dashboard View
-          <View style={styles.card}>
-            <Text style={styles.welcomeText}>Welcome Back,</Text>
-            <Text style={styles.patientName}>{patientName}</Text>
-
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusBadgeText}>Status: {patientStatus}</Text>
-            </View>
-
-            {analysisResult ? (
-              <View style={styles.assessmentBox}>
-                <Text style={styles.assessmentHeading}>Last AI Scalp Assessment</Text>
-                {renderAnalysisDetails(analysisResult)}
-              </View>
-            ) : (
-              <Text style={styles.noDataText}>
-                No diagnostics records found. Take a hair test to submit photos and receive an AI scalp analysis.
-              </Text>
-            )}
-
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutButtonText}>Log Out Profile</Text>
-            </TouchableOpacity>
-          </View>
-        )
-      ) : (
-        // Login View
-        <View style={styles.card}>
-          <Text style={styles.loginTitle}>Patient Sign In</Text>
-
-          <TextInput 
-            placeholder="Registered Email Address"
-            value={emailInput}
-            onChangeText={setEmailInput}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-          />
-
-          <TextInput 
-            placeholder="Account Password"
-            value={passwordInput}
-            onChangeText={setPasswordInput}
-            secureTextEntry
-            style={styles.input}
-          />
-
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoggingIn}>
-            {isLoggingIn ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign In to Portal</Text>
-            )}
+      {/* ====== FIXED PORTAL HEADER ====== */}
+      {isLoggedIn && (
+        <View style={styles.portalHeader}>
+          <TouchableOpacity style={styles.hamburgerBtn} onPress={openDrawer}>
+            <View style={styles.hamLine} />
+            <View style={styles.hamLine} />
+            <View style={styles.hamLine} />
           </TouchableOpacity>
+          <View style={styles.portalHeaderCenter}>
+            <Text style={styles.portalHeaderTitle}>ASG Patient Portal</Text>
+            <Text style={styles.portalHeaderSubtitle}>
+              {activeTab === 'treatment' ? 'Active Treatment' : 'Profile & History'}
+            </Text>
+          </View>
+          <View style={styles.hamburgerBtn} />
         </View>
       )}
 
-      <TouchableOpacity style={styles.backHomeBtn} onPress={onBack}>
-        <Text style={styles.backHomeBtnText}>Back to Clinic Info</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.contentContainer, isLoggedIn && { paddingTop: 8 }]}
+      >
+        {!isLoggedIn && <Text style={styles.title}>ASG Patient Portal</Text>}
+
+        {isLoggedIn ? (
+          loadingData ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#0d9488" />
+            </View>
+          ) : (
+            // Dashboard View
+            <View style={styles.card}>
+              <Text style={styles.welcomeText}>Welcome Back,</Text>
+              <Text style={styles.patientName}>{patientName}</Text>
+
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>Status: {patientStatus}</Text>
+              </View>
+
+              {activeTab === 'treatment' ? (
+                <View>
+                  {analysisResult ? (
+                    <View style={styles.assessmentBox}>
+                      <Text style={styles.assessmentHeading}>Last AI Scalp Assessment</Text>
+                      {renderAnalysisDetails(analysisResult)}
+                    </View>
+                  ) : (
+                    <Text style={styles.noDataText}>
+                      No diagnostics records found. Take a hair test to submit photos and receive an AI scalp analysis.
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                // PROFILE & HISTORY VIEW
+                <View style={styles.tabContent}>
+                  {/* 1. Update Profile Fields */}
+                  <Text style={styles.subHeading}>Update Profile Details</Text>
+
+                  <Text style={styles.fieldLabel}>Full Name</Text>
+                  <TextInput
+                    placeholder="Full Name"
+                    value={editName}
+                    onChangeText={setEditName}
+                    style={styles.input}
+                  />
+
+                  <Text style={styles.fieldLabel}>Phone Number</Text>
+                  <TextInput
+                    placeholder="Phone Number (Optional)"
+                    value={editPhone}
+                    onChangeText={setEditPhone}
+                    keyboardType="phone-pad"
+                    style={styles.input}
+                  />
+
+                  <Text style={[styles.subHeading, { marginTop: 16 }]}>Change Account Password (Optional)</Text>
+                  <Text style={styles.fieldLabel}>Current Password</Text>
+                  <TextInput
+                    placeholder="Enter Current Password"
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    secureTextEntry
+                    style={styles.input}
+                  />
+
+                  <Text style={styles.fieldLabel}>New Password</Text>
+                  <TextInput
+                    placeholder="Enter New Password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry
+                    style={styles.input}
+                  />
+
+                  <Text style={styles.fieldLabel}>Confirm New Password</Text>
+                  <TextInput
+                    placeholder="Confirm New Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    style={styles.input}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.saveProfileButton}
+                    onPress={handleUpdateProfile}
+                    disabled={isSavingProfile}
+                  >
+                    {isSavingProfile ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={styles.saveProfileButtonText}>Save Profile Changes</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={[styles.divider, { marginVertical: 20 }]} />
+
+                  {/* 2. Paginated Past Test History List */}
+                  <View style={styles.historyHeaderRow}>
+                    <Text style={styles.subHeading}>Past AI Test Results</Text>
+                    {allAnalyses.length > 0 && (
+                      <Text style={styles.pageIndicator}>
+                        Page {currentPage} of {totalPages}
+                      </Text>
+                    )}
+                  </View>
+
+                  {allAnalyses.length > 0 ? (
+                    <View>
+                      {pagedAnalyses.map((analysis, idx) => {
+                        let dateStr = 'Unknown Date';
+                        if (analysis.createdAt) {
+                          dateStr = new Date(analysis.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                          });
+                        }
+                        const minG = analysis.estimatedMinGrafts || 1500;
+                        const maxG = analysis.estimatedMaxGrafts || 2000;
+                        const stage = analysis.hairLossStage || 'UNCERTAIN';
+
+                        return (
+                          <View key={analysis.id || idx} style={styles.historyCard}>
+                            <View style={styles.historyHeader}>
+                              <Text style={styles.historyDate}>{dateStr}</Text>
+                              <View style={styles.historyBadge}>
+                                <Text style={styles.historyBadgeText}>{stage}</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.historyDesc}>Estimated Grafts: {minG} – {maxG}</Text>
+                            <Text style={styles.historyDesc}>Donor Area: {analysis.donorAreaQuality || 'GOOD'} Quality</Text>
+                            <TouchableOpacity
+                              style={styles.viewReportBtn}
+                              onPress={() => {
+                                let parsed: any = null;
+                                if (analysis.aiAnalysis) {
+                                  try { parsed = JSON.parse(analysis.aiAnalysis); } catch (_) {}
+                                }
+                                if (!parsed) {
+                                  parsed = {
+                                    norwoodStage: stage,
+                                    estimatedGraftRequirement: { minimumGrafts: minG, maximumGrafts: maxG },
+                                    donorArea: { rating: analysis.donorAreaQuality || 'GOOD', densityEstimateGraftsPerCm2: analysis.hairDensity },
+                                    procedureAssessment: { preliminaryRecommendation: 'FUE' }
+                                  };
+                                }
+                                setSelectedAnalysis(parsed);
+                                setModalVisible(true);
+                              }}
+                            >
+                              <Text style={styles.viewReportBtnText}>View Full Report →</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <View style={styles.paginationRow}>
+                          <TouchableOpacity
+                            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+                            onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            <Text style={[styles.pageBtnText, currentPage === 1 && styles.pageBtnTextDisabled]}>‹ Prev</Text>
+                          </TouchableOpacity>
+
+                          <View style={styles.pageDots}>
+                            {Array.from({ length: totalPages }).map((_, i) => (
+                              <TouchableOpacity
+                                key={i}
+                                onPress={() => setCurrentPage(i + 1)}
+                                style={[styles.pageDot, currentPage === i + 1 && styles.pageDotActive]}
+                              />
+                            ))}
+                          </View>
+
+                          <TouchableOpacity
+                            style={[styles.pageBtn, currentPage === totalPages && styles.pageBtnDisabled]}
+                            onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                          >
+                            <Text style={[styles.pageBtnText, currentPage === totalPages && styles.pageBtnTextDisabled]}>Next ›</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={styles.noHistoryText}>No past tests found.</Text>
+                  )}
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Text style={styles.logoutButtonText}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        ) : (
+          // Login View
+          <View style={styles.card}>
+            <Text style={styles.loginTitle}>Patient Sign In</Text>
+
+            <TextInput
+              placeholder="Registered Email Address"
+              value={emailInput}
+              onChangeText={setEmailInput}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+            />
+
+            <TextInput
+              placeholder="Account Password"
+              value={passwordInput}
+              onChangeText={setPasswordInput}
+              secureTextEntry
+              style={styles.input}
+            />
+
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoggingIn}>
+              {isLoggingIn ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Sign In to Portal</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.backHomeBtn} onPress={onBack}>
+          <Text style={styles.backHomeBtnText}>← Back to Clinic Info</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* ====== HAMBURGER DRAWER ====== */}
+      {drawerOpen && (
+        <>
+          {/* Backdrop */}
+          <TouchableOpacity
+            style={styles.drawerBackdrop}
+            activeOpacity={1}
+            onPress={closeDrawer}
+          />
+
+          {/* Sidebar Panel */}
+          <View style={styles.drawerPanel}>
+            {/* Drawer Header */}
+            <View style={styles.drawerHeader}>
+              <View>
+                <Text style={styles.drawerBrand}>ASG Hair</Text>
+                <Text style={styles.drawerSubBrand}>Patient Portal</Text>
+              </View>
+              <TouchableOpacity onPress={closeDrawer} style={styles.drawerCloseBtn}>
+                <Text style={styles.drawerCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Patient badge */}
+            <View style={styles.drawerPatientBadge}>
+              <View style={styles.drawerAvatar}>
+                <Text style={styles.drawerAvatarText}>
+                  {patientName ? patientName.charAt(0).toUpperCase() : 'P'}
+                </Text>
+              </View>
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.drawerPatientName}>{patientName || 'Patient'}</Text>
+                <Text style={styles.drawerPatientStatus}>{patientStatus || 'CONSULTATION'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.drawerDivider} />
+
+            {/* Nav Items */}
+            <TouchableOpacity
+              style={[styles.drawerNavItem, activeTab === 'treatment' && styles.drawerNavItemActive]}
+              onPress={() => handleDrawerNav('treatment')}
+            >
+              <Text style={styles.drawerNavIcon}>📊</Text>
+              <Text style={[styles.drawerNavText, activeTab === 'treatment' && styles.drawerNavTextActive]}>
+                Active Treatment
+              </Text>
+              {activeTab === 'treatment' && <View style={styles.drawerNavDot} />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerNavItem}
+              onPress={goToProfile}
+            >
+              <Text style={styles.drawerNavIcon}>👤</Text>
+              <Text style={styles.drawerNavText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerNavItem}
+              onPress={goToHistory}
+            >
+              <Text style={styles.drawerNavIcon}>📋</Text>
+              <Text style={styles.drawerNavText}>Test History</Text>
+            </TouchableOpacity>
+
+            <View style={styles.drawerDivider} />
+
+            <TouchableOpacity
+              style={styles.drawerNavItem}
+              onPress={() => { closeDrawer(); onBack(); }}
+            >
+              <Text style={styles.drawerNavIcon}>🏥</Text>
+              <Text style={styles.drawerNavText}>Back to Clinic Info</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.drawerNavItem, { marginTop: 'auto' }]}
+              onPress={() => { closeDrawer(); handleLogout(); }}
+            >
+              <Text style={styles.drawerNavIcon}>🚪</Text>
+              <Text style={[styles.drawerNavText, { color: '#FF6929' }]}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* Detailed Report Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(false);
+          setSelectedAnalysis(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Detailed Diagnostics Report</Text>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => {
+                  setModalVisible(false);
+                  setSelectedAnalysis(null);
+                }}
+              >
+                <Text style={styles.modalCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              {selectedAnalysis && renderAnalysisDetails(selectedAnalysis)}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: THEME.bg,
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -461,7 +882,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
+    color: THEME.headerBg,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -473,25 +894,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: THEME.cardBorder,
     padding: 24,
   },
   welcomeText: {
     fontSize: 14,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: '600',
     textAlign: 'center',
   },
   patientName: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#0f172a',
+    color: THEME.headerBg,
     textAlign: 'center',
     marginTop: 2,
     marginBottom: 8,
   },
   statusBadge: {
-    backgroundColor: 'rgba(13,148,136,0.1)',
+    backgroundColor: THEME.badge,
     borderRadius: 10,
     paddingVertical: 4,
     paddingHorizontal: 12,
@@ -499,7 +920,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   statusBadgeText: {
-    color: '#0d9488',
+    color: THEME.primary,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -509,7 +930,7 @@ const styles = StyleSheet.create({
   assessmentHeading: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.headerBg,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -521,13 +942,13 @@ const styles = StyleSheet.create({
   },
   paramLabel: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: '600',
   },
   paramValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.headerBg,
   },
   divider: {
     height: 1,
@@ -535,7 +956,7 @@ const styles = StyleSheet.create({
   },
   noDataText: {
     fontSize: 12,
-    color: '#475569',
+    color: THEME.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
@@ -548,48 +969,48 @@ const styles = StyleSheet.create({
   },
   zoneLabel: {
     fontSize: 11,
-    color: '#0d9488',
+    color: THEME.primary,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   zoneValue: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: THEME.textSecondary,
     lineHeight: 16,
   },
   detailListText: {
     fontSize: 10,
-    color: '#64748b',
+    color: THEME.textSecondary,
     marginTop: 6,
     fontWeight: '600',
   },
   explanationBox: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: THEME.bg,
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: THEME.cardBorder,
   },
   explanationTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0d9488',
+    color: THEME.primary,
     marginBottom: 6,
   },
   explanationDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     lineHeight: 16,
   },
   obsItem: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     marginTop: 3,
   },
   logoutButton: {
-    backgroundColor: '#0f172a',
+    backgroundColor: THEME.headerBg,
     borderRadius: 16,
     height: 50,
     justifyContent: 'center',
@@ -604,7 +1025,7 @@ const styles = StyleSheet.create({
   loginTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.headerBg,
     marginBottom: 20,
   },
   input: {
@@ -615,11 +1036,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
     fontSize: 13,
-    color: '#0f172a',
+    color: THEME.headerBg,
     backgroundColor: '#ffffff',
   },
   loginButton: {
-    backgroundColor: '#0d9488',
+    backgroundColor: THEME.primary,
     borderRadius: 16,
     height: 52,
     justifyContent: 'center',
@@ -640,6 +1061,383 @@ const styles = StyleSheet.create({
   backHomeBtnText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.textSecondary,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 20,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  tabButtonActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: THEME.textSecondary,
+  },
+  tabButtonTextActive: {
+    color: THEME.primary,
+  },
+  tabContent: {
+    marginTop: 10,
+  },
+  subHeading: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: THEME.headerBg,
+    marginBottom: 12,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    color: THEME.textSecondary,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  saveProfileButton: {
+    backgroundColor: THEME.primary,
+    borderRadius: 16,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  saveProfileButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  historyCard: {
+    backgroundColor: THEME.bg,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    marginBottom: 12,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  historyDate: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: THEME.headerBg,
+  },
+  historyBadge: {
+    backgroundColor: THEME.badge,
+    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  historyBadgeText: {
+    color: THEME.primary,
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  historyDesc: {
+    fontSize: 11,
+    color: THEME.textSecondary,
+    marginBottom: 4,
+  },
+  viewReportBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  viewReportBtnText: {
+    fontSize: 11,
+    color: THEME.primary,
+    fontWeight: 'bold',
+  },
+  noHistoryText: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderColor: THEME.cardBorder,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: THEME.headerBg,
+  },
+  modalCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseBtnText: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+    fontWeight: 'bold',
+  },
+  modalScrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+
+  /* ── Portal fixed header ── */
+  portalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: THEME.headerBg,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingTop: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  portalHeaderCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  portalHeaderTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  portalHeaderSubtitle: {
+    color: THEME.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 1,
+  },
+  hamburgerBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  hamLine: {
+    width: 22,
+    height: 2.5,
+    backgroundColor: '#ffffff',
+    borderRadius: 2,
+    marginVertical: 2,
+  },
+
+  /* ── Drawer backdrop + panel ── */
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    zIndex: 90,
+  },
+  drawerPanel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 280,
+    backgroundColor: THEME.headerBg,
+    zIndex: 100,
+    paddingBottom: 40,
+    flexDirection: 'column',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 32,
+    borderBottomWidth: 1,
+    borderColor: THEME.drawerBorder,
+  },
+  drawerBrand: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  drawerSubBrand: {
+    color: THEME.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  drawerCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: THEME.drawerActive,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerCloseBtnText: {
+    color: THEME.drawerText,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  drawerPatientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    paddingVertical: 16,
+  },
+  drawerAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: THEME.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerAvatarText: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  drawerPatientName: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  drawerPatientStatus: {
+    color: THEME.textSecondary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    marginHorizontal: 20,
+    marginVertical: 8,
+  },
+  drawerNavItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginHorizontal: 10,
+    marginVertical: 2,
+  },
+  drawerNavItemActive: {
+    backgroundColor: THEME.drawerActive,
+  },
+  drawerNavIcon: {
+    fontSize: 16,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  drawerNavText: {
+    color: THEME.drawerText,
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  drawerNavTextActive: {
+    color: THEME.primary,
+    fontWeight: 'bold',
+  },
+  drawerNavDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.primary,
+  },
+
+  /* ── History pagination ── */
+  historyHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pageIndicator: {
+    fontSize: 10,
+    color: THEME.textSecondary,
+    fontWeight: 'bold',
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  pageBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: THEME.primary,
+  },
+  pageBtnDisabled: {
+    backgroundColor: THEME.disabled,
+  },
+  pageBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  pageBtnTextDisabled: {
+    color: THEME.drawerText,
+  },
+  pageDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pageDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.dotInactive,
+    margin: 3,
+  },
+  pageDotActive: {
+    backgroundColor: THEME.primary,
+    width: 20,
+    borderRadius: 4,
   },
 });

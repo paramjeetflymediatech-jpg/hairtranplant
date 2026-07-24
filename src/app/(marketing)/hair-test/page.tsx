@@ -731,7 +731,7 @@ export default function HairTestPage() {
                   {step === 1 && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Gender</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Gender <span className="text-red-500">*</span></label>
                         <div className="grid grid-cols-2 gap-4">
                           {['Male', 'Female'].map((g) => (
                             <button
@@ -751,7 +751,7 @@ export default function HairTestPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Age Group</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Age Group <span className="text-red-500">*</span></label>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           {['18-24', '25-34', '35-44', '45+'].map((a) => (
                             <button
@@ -776,7 +776,7 @@ export default function HairTestPage() {
                   {step === 2 && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Primary Thinning Zone</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Primary Thinning Zone <span className="text-red-500">*</span></label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           {['Frontal Hairline', 'Crown Vertex', 'Overall Thinning'].map((t) => (
                             <button
@@ -796,7 +796,7 @@ export default function HairTestPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rate of Hair Fall</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rate of Hair Fall <span className="text-red-500">*</span></label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           {['Normal (Less than 50/day)', 'Moderate (50-100/day)', 'High (Over 100/day)'].map((f) => (
                             <button
@@ -822,7 +822,7 @@ export default function HairTestPage() {
                     <div className="space-y-6 animate-in fade-in duration-300">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Sleep Duration</label>
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Sleep Duration <span className="text-red-500">*</span></label>
                           <div className="flex flex-col gap-3">
                             {['Less than 6 hours', '6 to 8 hours', 'More than 8 hours'].map((s) => (
                               <button
@@ -842,7 +842,7 @@ export default function HairTestPage() {
                         </div>
 
                         <div className="space-y-3">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Stress Levels</label>
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Stress Levels <span className="text-red-500">*</span></label>
                           <div className="flex flex-col gap-3">
                             {['Low', 'Medium', 'High'].map((st) => (
                               <button
@@ -864,7 +864,7 @@ export default function HairTestPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dietary Habits</label>
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dietary Habits <span className="text-red-500">*</span></label>
                           <div className="flex flex-col gap-3">
                             {['Vegetarian', 'Non-Vegetarian', 'Vegan'].map((d) => (
                               <button
@@ -910,7 +910,7 @@ export default function HairTestPage() {
                   {step === 4 && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                       <div className="space-y-3 text-center">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Does hair thinning run in your family?</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Does hair thinning run in your family? <span className="text-red-500">*</span></label>
                         <p className="text-[11px] text-slate-500 font-semibold max-w-sm mx-auto">Genetic hair loss (androgenetic alopecia) typically follows maternal or paternal lineage.</p>
                         <div className="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
                           {['Yes', 'No'].map((fh) => (
@@ -1004,14 +1004,14 @@ export default function HairTestPage() {
                       <div className="space-y-4 max-w-md mx-auto pt-2">
                         <Input 
                           prefix={<UserOutlined className="text-slate-400" />} 
-                          placeholder="Full Name" 
+                          placeholder="Full Name *" 
                           size="large"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                         />
                         <Input 
                           prefix={<MailOutlined className="text-slate-400" />} 
-                          placeholder="Email Address" 
+                          placeholder="Email Address *" 
                           size="large"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}

@@ -8,6 +8,7 @@ import {
   Dimensions,
   Image
 } from 'react-native';
+import { THEME } from '../config/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -104,7 +105,7 @@ export default function WelcomeScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19', // Premium midnight theme
+    backgroundColor: '#1A0A00', // Premium dark warm-black theme
   },
   contentContainer: {
     paddingHorizontal: 24,
@@ -123,8 +124,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1.5,
+    borderColor: THEME.primary,
     padding: 8,
   },
   logoImage: {
@@ -134,18 +135,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   badgeContainer: {
-    backgroundColor: 'rgba(13, 148, 136, 0.15)',
+    backgroundColor: 'rgba(214, 57, 0, 0.15)',
     borderRadius: 30,
     paddingVertical: 5,
     paddingHorizontal: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(13, 148, 136, 0.3)',
+    borderColor: THEME.primary,
   },
   badgeText: {
     fontSize: 9,
     fontWeight: 'bold',
-    color: '#0d9488',
+    color: THEME.accent, // Accent Gold
     letterSpacing: 1.5,
   },
   title: {
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: '#cbd5e1',
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 10,
@@ -167,13 +168,13 @@ const styles = StyleSheet.create({
     marginBottom: 36,
   },
   card: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#2A1A10', // Rich dark warm card background
     borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 105, 41, 0.12)',
   },
   cardEmoji: {
     fontSize: 24,
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
   },
   cardDesc: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#cbd5e1',
     lineHeight: 16,
   },
   btnStack: {
@@ -198,13 +199,13 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   primaryBtn: {
-    backgroundColor: '#0d9488',
+    backgroundColor: THEME.primary,
     borderRadius: 18,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#0d9488',
+    shadowColor: THEME.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 4,
   },
@@ -215,19 +216,19 @@ const styles = StyleSheet.create({
   },
   btnSubtext: {
     fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   secondaryBtn: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#2A1A10',
     borderRadius: 18,
     paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
+    borderWidth: 1.5,
+    borderColor: THEME.primary,
   },
   secondaryBtnText: {
-    color: '#e2e8f0',
+    color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -236,13 +237,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkBtnText: {
-    color: '#0d9488',
+    color: THEME.primaryLight,
     fontWeight: 'bold',
     fontSize: 13,
   },
   disclaimer: {
     fontSize: 9,
-    color: '#475569',
+    color: '#8c8c8c',
     textAlign: 'center',
     lineHeight: 13,
   },

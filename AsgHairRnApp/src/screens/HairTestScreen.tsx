@@ -13,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { BASE_URL } from '../config/apiConfig';
+import { THEME } from '../config/theme';
 
 // Norwood descriptions dictionary
 const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
@@ -476,7 +477,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
 
       {loading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#0d9488" />
+          <ActivityIndicator size="large" color={THEME.primary} />
           <Text style={styles.loaderText}>Processing Diagnostic Report...</Text>
         </View>
       ) : result ? (
@@ -536,7 +537,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
           {/* Step 1 */}
           {step === 1 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.questionLabel}>Select Gender</Text>
+              <Text style={styles.questionLabel}>Select Gender <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsRow}>
                 {['Male', 'Female'].map((g) => (
                   <TouchableOpacity 
@@ -549,7 +550,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 ))}
               </View>
 
-              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Select Age Group</Text>
+              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Select Age Group <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['18-24', '25-34', '35-44', '45+'].map((a) => (
                   <TouchableOpacity 
@@ -567,7 +568,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
           {/* Step 2 */}
           {step === 2 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.questionLabel}>Primary Thinning Zone</Text>
+              <Text style={styles.questionLabel}>Primary Thinning Zone <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['Frontal Hairline', 'Crown Vertex', 'Overall Thinning'].map((t) => (
                   <TouchableOpacity 
@@ -580,7 +581,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 ))}
               </View>
 
-              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Rate of Hair Fall</Text>
+              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Rate of Hair Fall <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['Normal (Less than 50/day)', 'Moderate (50-100/day)', 'High (Over 100/day)'].map((f) => (
                   <TouchableOpacity 
@@ -598,7 +599,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
           {/* Step 3 */}
           {step === 3 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.questionLabel}>Daily Sleep Duration</Text>
+              <Text style={styles.questionLabel}>Daily Sleep Duration <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['Less than 6 hours', '6 to 8 hours', 'More than 8 hours'].map((s) => (
                   <TouchableOpacity 
@@ -611,7 +612,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 ))}
               </View>
 
-              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Stress Level</Text>
+              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Stress Level <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['Low', 'Medium', 'High'].map((st) => (
                   <TouchableOpacity 
@@ -624,7 +625,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 ))}
               </View>
 
-              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Dietary Habits</Text>
+              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Dietary Habits <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['Vegetarian', 'Non-Vegetarian', 'Vegan'].map((d) => (
                   <TouchableOpacity 
@@ -637,7 +638,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 ))}
               </View>
 
-              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Active Dandruff Concern?</Text>
+              <Text style={[styles.questionLabel, { marginTop: 20 }]}>Active Dandruff Concern? <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsGrid}>
                 {['Yes, flaky/itchy scalp', 'No, clear scalp'].map((df) => (
                   <TouchableOpacity 
@@ -655,7 +656,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
           {/* Step 4 */}
           {step === 4 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.questionLabel}>Does hair thinning run in your family?</Text>
+              <Text style={styles.questionLabel}>Does hair thinning run in your family? <Text style={{ color: '#ef4444' }}>*</Text></Text>
               <View style={styles.optionsRow}>
                 {['Yes', 'No'].map((fh) => (
                   <TouchableOpacity 
@@ -703,13 +704,13 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
               <Text style={styles.photoTip}>Your diagnostics report will be saved under these details.</Text>
 
               <TextInput 
-                placeholder="Full Name"
+                placeholder="Full Name *"
                 value={name}
                 onChangeText={setName}
                 style={styles.input}
               />
               <TextInput 
-                placeholder="Email Address"
+                placeholder="Email Address *"
                 value={email}
                 onChangeText={setEmail}
                 style={styles.input}
@@ -739,7 +740,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 <Text style={styles.nextBtnText}>Next</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[styles.nextBtn, { backgroundColor: '#0d9488' }]} onPress={handleSubmit}>
+              <TouchableOpacity style={[styles.nextBtn, { backgroundColor: THEME.primary }]} onPress={handleSubmit}>
                 <Text style={styles.nextBtnText}>Submit Diagnostics</Text>
               </TouchableOpacity>
             )}
@@ -764,14 +765,14 @@ const styles = StyleSheet.create({
   },
   zoneLabel: {
     fontSize: 11,
-    color: '#0d9488',
+    color: THEME.primary,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   zoneValue: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: THEME.textPrimary,
     lineHeight: 16,
   },
   paramRow: {
@@ -782,23 +783,23 @@ const styles = StyleSheet.create({
   },
   paramLabel: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: '600',
   },
   paramValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.textPrimary,
   },
   detailListText: {
     fontSize: 10,
-    color: '#64748b',
+    color: THEME.textSecondary,
     marginTop: 6,
     fontWeight: '600',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: THEME.bg,
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -807,7 +808,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
+    color: THEME.primary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -818,20 +819,20 @@ const styles = StyleSheet.create({
   loaderText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.textSecondary,
     marginTop: 16,
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.card,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: THEME.cardBorder,
     padding: 24,
   },
   stepText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.primary,
     textTransform: 'uppercase',
     marginBottom: 16,
   },
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
   questionLabel: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.textPrimary,
     marginBottom: 12,
   },
   optionsRow: {
@@ -854,34 +855,34 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: THEME.cardBorder,
+    backgroundColor: THEME.card,
     borderRadius: 16,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
   },
   optionButtonActive: {
-    borderColor: '#0d9488',
-    backgroundColor: 'rgba(13,148,136,0.06)',
+    borderColor: THEME.primary,
+    backgroundColor: THEME.badge,
   },
   optionText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.textSecondary,
   },
   optionTextActive: {
-    color: '#0d9488',
+    color: THEME.primary,
   },
   photoTip: {
     fontSize: 11,
-    color: '#64748b',
+    color: THEME.textSecondary,
     marginBottom: 16,
     lineHeight: 15,
   },
   photoUploadButton: {
-    backgroundColor: '#0f172a',
+    backgroundColor: THEME.primary,
     borderRadius: 16,
     height: 48,
     justifyContent: 'center',
@@ -894,15 +895,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderWidth: 1.5,
+    borderColor: THEME.cardBorder,
     borderRadius: 16,
     height: 48,
     paddingHorizontal: 16,
     marginBottom: 12,
     fontSize: 13,
-    color: '#0f172a',
-    backgroundColor: '#ffffff',
+    color: THEME.textPrimary,
+    backgroundColor: THEME.card,
   },
   navRow: {
     flexDirection: 'row',
@@ -915,13 +916,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderWidth: 1.5,
+    borderColor: THEME.cardBorder,
   },
   backBtnText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.textSecondary,
   },
   nextBtn: {
     height: 46,
@@ -929,7 +930,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 14,
-    backgroundColor: '#0f172a',
+    backgroundColor: THEME.primary,
     marginLeft: 'auto',
   },
   nextBtnText: {
@@ -938,14 +939,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   resultsCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.card,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: THEME.cardBorder,
     padding: 24,
   },
   resultHeader: {
-    backgroundColor: 'rgba(13,148,136,0.1)',
+    backgroundColor: THEME.badge,
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -953,7 +954,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   resultLabel: {
-    color: '#0d9488',
+    color: THEME.badgeText,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -965,64 +966,64 @@ const styles = StyleSheet.create({
   },
   metricTitle: {
     fontSize: 12,
-    color: '#475569',
+    color: THEME.textSecondary,
     fontWeight: '500',
   },
   metricValue: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.textPrimary,
   },
   divider: {
     height: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: THEME.cardBorder,
   },
   explanationBox: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: THEME.bg,
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: THEME.cardBorder,
   },
   explanationTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0d9488',
+    color: THEME.primary,
     marginBottom: 6,
   },
   explanationDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     lineHeight: 16,
   },
   obsItem: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     marginTop: 3,
   },
   signupBox: {
-    backgroundColor: 'rgba(13,148,136,0.04)',
+    backgroundColor: THEME.badge,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(13,148,136,0.2)',
+    borderColor: THEME.cardBorder,
     padding: 16,
     marginTop: 20,
   },
   signupTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.textPrimary,
     marginBottom: 4,
   },
   signupDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     lineHeight: 15,
     marginBottom: 12,
   },
   signupButton: {
-    backgroundColor: '#0d9488',
+    backgroundColor: THEME.primary,
     borderRadius: 14,
     height: 44,
     justifyContent: 'center',
@@ -1045,12 +1046,12 @@ const styles = StyleSheet.create({
   whatsappTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: THEME.textPrimary,
     marginBottom: 4,
   },
   whatsappDesc: {
     fontSize: 11,
-    color: '#475569',
+    color: THEME.textSecondary,
     lineHeight: 15,
     marginBottom: 12,
     textAlign: 'center',
@@ -1068,7 +1069,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   resetButton: {
-    backgroundColor: '#0f172a',
+    backgroundColor: THEME.primary,
     borderRadius: 16,
     height: 50,
     justifyContent: 'center',
@@ -1089,6 +1090,6 @@ const styles = StyleSheet.create({
   backHomeBtnText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#475569',
+    color: THEME.textSecondary,
   },
 });

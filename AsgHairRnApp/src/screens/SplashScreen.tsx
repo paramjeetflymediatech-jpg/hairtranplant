@@ -7,6 +7,7 @@ import {
   Easing, 
   Dimensions 
 } from 'react-native';
+import { THEME } from '../config/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -78,7 +79,7 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0f19', // Premium midnight dark blue
+    backgroundColor: '#1A0A00', // Premium dark warm-black theme
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -95,13 +96,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0d9488',
+    shadowColor: THEME.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 15,
     elevation: 8,
-    borderWidth: 2,
-    borderColor: '#0d9488',
+    borderWidth: 2.5,
+    borderColor: THEME.primary,
     padding: 10,
   },
   logoImage: {
@@ -121,14 +122,14 @@ const styles = StyleSheet.create({
   brandSubtitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#0d9488', // Teal accent
+    color: THEME.primaryLight, // Orange accent matching the logo
     letterSpacing: 4,
     textAlign: 'center',
     marginBottom: 16,
   },
   tagline: {
     fontSize: 11,
-    color: '#64748b',
+    color: '#a3a3a3',
     textAlign: 'center',
   },
   footer: {
