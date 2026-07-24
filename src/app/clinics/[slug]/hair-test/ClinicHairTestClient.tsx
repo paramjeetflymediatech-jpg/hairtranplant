@@ -65,6 +65,32 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(true);
+  const [patientId, setPatientId] = useState<string | null>(null);
+  const [whatsappTracked, setWhatsappTracked] = useState(false);
+
+  React.useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const user = await res.json();
+          if (user && user.role === 'PATIENT') {
+            setIsLoggedIn(true);
+            setName(user.name || '');
+            setEmail(user.email || '');
+            setPhone(user.phone || '');
+          }
+        }
+      } catch (e) {
+        console.error('Session check failed:', e);
+      }
+    };
+    checkSession();
+  }, []);
+
   // Resolve dynamic theme colors based on slug or custom database override
   const baseScheme = CLINIC_COLORS[clinic.slug] || CLINIC_COLORS.default;
   const colorScheme = {
@@ -216,6 +242,11 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
       if (!res.ok) throw new Error(data.error || 'Failed to analyze');
 
       setResult(data.analysis);
+      setActiveLeadId(data.leadId || null);
+      setIsGuest(data.isGuest !== false);
+      setPatientId(data.patientId || null);
+      setWhatsappTracked(false);
+
       Swal.fire({
         background: '#111827',
         color: '#f3f4f6',
@@ -488,6 +519,199 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
                 ⚠️ Automated estimate based on provided details. A hair restoration specialist from <strong>{clinic.name}</strong> will review these findings and reach out to you shortly at {phone || email} to plan your FUE consultation.
               </div>
 
+              {/* Norwood Stage Explanation Details */}
+              {result.norwoodStage && (
+                (() => {
+                  const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
+                    'Norwood I': {
+                      title: 'Norwood Stage I: Minimal Loss',
+                      desc: 'No visible recession or crown thinning. Follicles are highly active.',
+                      symptoms: ['Symmetrical density', 'Intact hairline', 'Minimal daily shedding'],
+                      care: 'Standard biotin support, high-protein nutrition, and mild shampoos.',
+                    },
+                    'Norwood II': {
+                      title: 'Norwood Stage II: Mild Temple Recession',
+                      desc: 'Symmetrical hair recession at the temple peaks. Hairline starts to show M/V shaped recession.',
+                      symptoms: ['Mild temple recession', 'Preserved crown density', 'V-shape beginning'],
+                      care: 'DHT blocker serums, scalp stimulation, and multivitamins.',
+                    },
+                    'Norwood III': {
+                      title: 'Norwood Stage III: Moderate Receding Hairline',
+                      desc: 'Deep recession at the temples, forming a distinct M, U, or V shape. Officially classified as clinical alopecia.',
+                      symptoms: ['Deep temple recession', 'Frontal hairline thinning', 'Visible scalp under light'],
+                      care: 'Medical DHT-blocker therapies or minor Sapphire FUE transplant.',
+                    },
+                    'Norwood III Vertex': {
+                      title: 'Norwood Stage III Vertex: Crown Loss',
+                      desc: 'Recessed temple hairline combined with thinning spot at the back whorl.',
+                      symptoms: ['Temple recession', 'Thinning spot at crown vertex', 'Frontal hairline intact'],
+                      care: 'PRP/GFC therapy combined with clinical micro-needling or crown FUE.',
+                    },
+                    'Norwood IV': {
+                      title: 'Norwood Stage IV: Frontal & Crown Recession',
+                      desc: 'Significant baldness at both the front hairline and the crown, with a dense bridge of hair separating them.',
+                      symptoms: ['Temples receded deeply', 'Crown bald spot visible', 'Solid hair bridge on top'],
+                      care: 'Sapphire FUE transplant recommended (1,800 - 2,500 grafts).',
+                    },
+                    'Norwood V': {
+                      title: 'Norwood Stage V: Severe Hair Loss',
+                      desc: 'The bridge of hair separating the front and back thinning areas becomes very thin and sparse.',
+                      symptoms: ['Frontal and vertex bald areas enlarge', 'Separating bridge thins out', 'Horseshoe shape outlines'],
+                      care: 'High-density Sapphire FUE / DHI transplant (2,500 - 3,500 grafts).',
+                    },
+                    'Norwood VI': {
+                      title: 'Norwood Stage VI: Conjoined Baldness',
+                      desc: 'The bridge of hair is completely gone, merging the front hairline and crown bald zone into one big area.',
+                      symptoms: ['Merged front-to-back baldness', 'Sparse top coverage', 'Donor area intact on sides'],
+                      care: 'Extensive Sapphire FUE transplant (3,500 - 4,500 grafts) over 2 days.',
+                    },
+                    'Norwood VII': {
+                      title: 'Norwood Stage VII: Extensive Baldness',
+                      desc: 'The most advanced stage of alopecia. Only a narrow horseshoe band of hair remains on the sides and back.',
+                      symptoms: ['Complete top baldness', 'Lower donor boundary', 'Wispy side hair texture'],
+                      care: 'Combination of scalp and beard/body hair FUE megasession.',
+                    },
+                    'UNCERTAIN': {
+                      title: 'Diffuse Thinning / Uncertain Classification',
+                      desc: 'Pattern presents diffuse thinning across the top rather than standard hairline recession.',
+                      symptoms: ['Overall reduction in density', 'Intact hairline shape', 'Visible scalp under light'],
+                      care: 'PRP/GFC therapy sessions combined with topical clinical hair boosters.',
+                    }
+                  };
+                  const info = STAGE_DETAILS[result.norwoodStage] || STAGE_DETAILS.UNCERTAIN;
+                  return (
+                    <div className="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-6 space-y-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider block" style={{ color: colorScheme.primary }}>
+                        {info.title}
+                      </h4>
+                      <p className="text-sm text-slate-355 leading-relaxed">
+                        {info.desc}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div className="bg-slate-900/30 p-4 border border-slate-850 rounded-xl">
+                          <span className="font-bold text-slate-200 block mb-1.5">Visual Indicators</span>
+                          <ul className="list-disc pl-4 space-y-1 text-slate-400">
+                            {info.symptoms.map((s, i) => <li key={i}>{s}</li>)}
+                          </ul>
+                        </div>
+                        <div className="bg-slate-900/30 p-4 border border-slate-850 rounded-xl">
+                          <span className="font-bold text-slate-200 block mb-1.5">Recommended Care</span>
+                          <p className="text-slate-400">{info.care}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+
+              {/* Guest Patient Registration Form */}
+              {isGuest && !isLoggedIn && (
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Save Your Diagnostics Permanently</h3>
+                    <p className="text-xs text-slate-400 mt-1">Create a password to register your patient account and save this diagnosis report to the {clinic.name} patient portal.</p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Input.Password 
+                      placeholder="Create Password" 
+                      size="large"
+                      className="flex-1 bg-slate-900/40 border-slate-800 text-white rounded-xl"
+                      id="register-password"
+                    />
+                    <Button
+                      type="primary"
+                      size="large"
+                      className="rounded-xl font-bold"
+                      onClick={async () => {
+                        const passwordInput = (document.getElementById('register-password') as HTMLInputElement)?.value;
+                        if (!passwordInput) {
+                          Swal.fire({
+                            background: '#111827',
+                            color: '#f3f4f6',
+                            icon: 'warning',
+                            title: 'Password Required',
+                            text: 'Please enter a password to register your account.',
+                            confirmButtonColor: colorScheme.primary
+                          });
+                          return;
+                        }
+                        try {
+                          const res = await fetch('/api/auth/register-patient', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              name,
+                              email,
+                              phone,
+                              password: passwordInput,
+                              leadId: activeLeadId
+                            })
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || 'Failed to register');
+                          setIsLoggedIn(true);
+                          setIsGuest(false);
+                          Swal.fire({
+                            background: '#111827',
+                            color: '#f3f4f6',
+                            icon: 'success',
+                            title: 'Account Registered!',
+                            text: 'You have been registered. Redirecting to your patient portal...',
+                            confirmButtonColor: colorScheme.primary
+                          }).then(() => {
+                            window.location.href = '/portal';
+                          });
+                        } catch (e: any) {
+                          Swal.fire({
+                            background: '#111827',
+                            color: '#f3f4f6',
+                            icon: 'error',
+                            title: 'Registration Failed',
+                            text: e.message || 'Unable to register account at this time.',
+                            confirmButtonColor: '#e11d48'
+                          });
+                        }
+                      }}
+                    >
+                      Register Patient Account
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* WhatsApp Tracking CTA */}
+              <div className="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-6 text-center space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider block">12-Month WhatsApp Recovery Tracking</h4>
+                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-lg mx-auto">
+                    Enroll in our 12-month post-operative WhatsApp care plan to submit regular growth audits and get recovery checks directly from our surgeons.
+                  </p>
+                </div>
+                <Button
+                  type="primary"
+                  size="large"
+                  style={{ backgroundColor: whatsappTracked ? '#10b981' : '#25D366', borderColor: whatsappTracked ? '#10b981' : '#25D366' }}
+                  className="rounded-xl font-bold inline-flex items-center gap-2 hover:opacity-90"
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/public/track-whatsapp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leadId: activeLeadId, patientId })
+                      });
+                      setWhatsappTracked(true);
+                      const greeting = `Hello ${clinic.name}! My name is ${name}. I just completed my AI Hair Test (Norwood Stage ${result.norwoodStage}). Please enroll me in my 12-month post-op WhatsApp recovery list.`;
+                      const url = `https://wa.me/${clinic.phone.replace(/[^0-9]/g, '') || '919501554888'}?text=${encodeURIComponent(greeting)}`;
+                      window.open(url, '_blank');
+                    } catch (e) {
+                      console.error('Failed to register WhatsApp tracking:', e);
+                    }
+                  }}
+                >
+                  {whatsappTracked ? 'Enrolled in WhatsApp Tracker ✓' : 'Track My Growth on WhatsApp'}
+                </Button>
+              </div>
+
               <div className="flex justify-center pt-4">
                 <Button
                   onClick={() => {
@@ -568,52 +792,44 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
                     </div>
                   )}
 
-                  {/* STEP 2: Concerns */}
+                  {/* STEP 2: CONCERNS */}
                   {step === 2 && (
                     <div className="space-y-6 animate-in fade-in duration-300">
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Where is your thinning most visible?</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Primary Thinning Zone</label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {[
-                            { id: 'Hairline', label: 'Receding Hairline' },
-                            { id: 'Crown', label: 'Crown / Vertex' },
-                            { id: 'Overall', label: 'Diffuse Thinning' }
-                          ].map((item) => (
+                          {['Frontal Hairline', 'Crown Vertex', 'Overall Thinning'].map((t) => (
                             <button
-                              key={item.id}
-                              onClick={() => setThinningArea(item.id)}
+                              key={t}
+                              onClick={() => setThinningArea(t)}
                               className={`p-4.5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
-                                thinningArea === item.id
+                                thinningArea === t
                                   ? `bg-slate-950/40 text-white`
                                   : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
                               }`}
-                              style={thinningArea === item.id ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                              style={thinningArea === t ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
                             >
-                              {item.label}
+                              {t}
                             </button>
                           ))}
                         </div>
                       </div>
 
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">How would you describe your hair fall rate?</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rate of Hair Fall</label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {[
-                            { id: 'Mild', label: 'Mild (Normal shedding)' },
-                            { id: 'Moderate', label: 'Moderate (Clumps in shower)' },
-                            { id: 'Severe', label: 'Severe (Thinning visible)' }
-                          ].map((item) => (
+                          {['Normal (Less than 50/day)', 'Moderate (50-100/day)', 'High (Over 100/day)'].map((f) => (
                             <button
-                              key={item.id}
-                              onClick={() => setFallSpeed(item.id)}
+                              key={f}
+                              onClick={() => setFallSpeed(f)}
                               className={`p-4.5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
-                                fallSpeed === item.id
+                                fallSpeed === f
                                   ? `bg-slate-950/40 text-white`
                                   : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
                               }`}
-                              style={fallSpeed === item.id ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                              style={fallSpeed === f ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
                             >
-                              {item.label}
+                              {f}
                             </button>
                           ))}
                         </div>
@@ -624,63 +840,87 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
                   {/* STEP 3: LIFESTYLE */}
                   {step === 3 && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Average Sleep Duration</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {['Less than 6 hours', '6-8 hours', '8+ hours'].map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => setSleep(item)}
-                              className={`p-4.5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
-                                sleep === item
-                                  ? `bg-slate-950/40 text-white`
-                                  : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                              }`}
-                              style={sleep === item ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
-                            >
-                              {item}
-                            </button>
-                          ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Sleep Duration</label>
+                          <div className="flex flex-col gap-3">
+                            {['Less than 6 hours', '6 to 8 hours', 'More than 8 hours'].map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => setSleep(s)}
+                                className={`p-4 rounded-2xl text-xs font-bold border text-left px-5 transition-all duration-300 ${
+                                  sleep === s
+                                    ? `bg-slate-950/40 text-white`
+                                    : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                                }`}
+                                style={sleep === s ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Stress Levels</label>
+                          <div className="flex flex-col gap-3">
+                            {['Low', 'Medium', 'High'].map((st) => (
+                              <button
+                                key={st}
+                                onClick={() => setStress(st)}
+                                className={`p-4 rounded-2xl text-xs font-bold border text-left px-5 transition-all duration-300 ${
+                                  stress === st
+                                    ? `bg-slate-950/40 text-white`
+                                    : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                                }`}
+                                style={stress === st ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                              >
+                                {st}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Stress Levels</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {['High', 'Moderate', 'Low'].map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => setStress(item)}
-                              className={`p-4.5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
-                                stress === item
-                                  ? `bg-slate-950/40 text-white`
-                                  : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                              }`}
-                              style={stress === item ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
-                            >
-                              {item}
-                            </button>
-                          ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dietary Habits</label>
+                          <div className="flex flex-col gap-3">
+                            {['Vegetarian', 'Non-Vegetarian', 'Vegan'].map((d) => (
+                              <button
+                                key={d}
+                                onClick={() => setDiet(d)}
+                                className={`p-4 rounded-2xl text-xs font-bold border text-left px-5 transition-all duration-300 ${
+                                  diet === d
+                                    ? `bg-slate-950/40 text-white`
+                                    : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                                }`}
+                                style={diet === d ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                              >
+                                {d}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Diet Type</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          {['Vegetarian', 'Non-Vegetarian', 'Vegan'].map((item) => (
-                            <button
-                              key={item}
-                              onClick={() => setDiet(item)}
-                              className={`p-4.5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
-                                diet === item
-                                  ? `bg-slate-950/40 text-white`
-                                  : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                              }`}
-                              style={diet === item ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
-                            >
-                              {item}
-                            </button>
-                          ))}
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Dandruff Concern?</label>
+                          <div className="flex flex-col gap-3">
+                            {['Yes, flaky/itchy scalp', 'No, clear scalp'].map((df) => (
+                              <button
+                                key={df}
+                                onClick={() => setDandruff(df)}
+                                className={`p-4 rounded-2xl text-xs font-bold border text-left px-5 transition-all duration-300 ${
+                                  dandruff === df
+                                    ? `bg-slate-950/40 text-white`
+                                    : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                                }`}
+                                style={dandruff === df ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                              >
+                                {df}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -688,25 +928,26 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
 
                   {/* STEP 4: GENETICS */}
                   {step === 4 && (
-                    <div className="space-y-6 animate-in fade-in duration-300 text-center">
-                      <label className="text-base font-bold text-slate-200 block mb-4">
-                        Do either of your parents show signs of visible thinning or pattern baldness?
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-                        {['Yes', 'No', 'Uncertain'].map((item) => (
-                          <button
-                            key={item}
-                            onClick={() => setFamilyHistory(item)}
-                            className={`p-5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
-                              familyHistory === item
-                                ? `bg-slate-950/40 text-white`
-                                : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                            }`}
-                            style={familyHistory === item ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
-                          >
-                            {item}
-                          </button>
-                        ))}
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                      <div className="space-y-3 text-center">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block font-sans">Does hair thinning run in your family?</label>
+                        <p className="text-[11px] text-slate-500 font-semibold max-w-sm mx-auto">Genetic hair loss (androgenetic alopecia) typically follows maternal or paternal lineage.</p>
+                        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
+                          {['Yes', 'No'].map((fh) => (
+                            <button
+                              key={fh}
+                              onClick={() => setFamilyHistory(fh)}
+                              className={`p-5 rounded-2xl text-xs font-bold border transition-all duration-300 ${
+                                familyHistory === fh
+                                  ? `bg-slate-950/40 text-white`
+                                  : 'bg-slate-950/20 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                              }`}
+                              style={familyHistory === fh ? { borderColor: colorScheme.primary, boxShadow: `0 0 15px ${colorScheme.primary}40`, color: colorScheme.primary } : {}}
+                            >
+                              {fh}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -714,9 +955,11 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
                   {/* STEP 5: PHOTOS */}
                   {step === 5 && (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                      <div className="space-y-1 text-center sm:text-left">
+                      <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block font-sans">Upload Scalp Images (Optional)</label>
-                        <p className="text-slate-500 text-[10px] font-medium">Clear photos enable highly accurate computer vision assessments.</p>
+                        <p className="text-slate-500 text-[10px] font-medium leading-relaxed">
+                          Clear photos enable highly accurate computer vision assessments. evaluation is done under strict clinical confidentiality.
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -797,13 +1040,15 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
 
                   {/* STEP 6: CONTACT DETAILS */}
                   {step === 6 && (
-                    <div className="space-y-6 animate-in fade-in duration-300 max-w-md mx-auto">
-                      <div className="space-y-1 text-center">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block font-sans">Enter Contact Details</label>
-                        <p className="text-slate-500 text-[10px] font-medium">Your customized diagnostics report will be generated under these details.</p>
+                    <div className="space-y-6 animate-in fade-in duration-300 max-w-md mx-auto font-sans">
+                      <div className="space-y-2 text-center">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Confirm Contact Details</label>
+                        <p className="text-[11px] text-slate-550 font-semibold leading-relaxed">
+                          Your diagnostic report will be compiled under these credentials. If you have an active patient account, use the registered email to link your results.
+                        </p>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-4 max-w-md mx-auto pt-2">
                         <Input 
                           prefix={<UserOutlined className="text-slate-400" />} 
                           placeholder="Full Name" 
@@ -817,6 +1062,7 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
                           size="large"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
+                          disabled={isLoggedIn}
                         />
                         <Input 
                           prefix={<PhoneOutlined className="text-slate-400" />} 

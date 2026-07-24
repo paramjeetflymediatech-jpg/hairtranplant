@@ -92,6 +92,10 @@ export async function ensureDbSynced() {
         await safeAlter('ALTER TABLE `clinics` MODIFY COLUMN `backgroundImage` LONGTEXT NULL;');
         await safeAlter('ALTER TABLE `users` MODIFY COLUMN `avatar` LONGTEXT NULL;');
 
+        // Add whatsappTracked column if missing (safeAlter handles it if it already exists)
+        await safeAlter('ALTER TABLE `leads` ADD COLUMN `whatsappTracked` BOOLEAN DEFAULT 0;');
+        await safeAlter('ALTER TABLE `patients` ADD COLUMN `whatsappTracked` BOOLEAN DEFAULT 0;');
+
         isSynced = true;
       } catch (err) {
         console.error('Failed to sync DB schema:', err);

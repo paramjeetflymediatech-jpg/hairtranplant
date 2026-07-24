@@ -14,6 +14,7 @@ export interface PatientAttributes {
   source?: string;
   status: 'LEAD' | 'CONSULTATION' | 'SCHEDULED' | 'POST_OP' | 'COMPLETED' | 'INACTIVE';
   notes?: string;
+  whatsappTracked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -50,6 +51,10 @@ export const Patient = sequelize.define<PatientInstance>(
       defaultValue: 'CONSULTATION',
     },
     notes: DataTypes.TEXT,
+    whatsappTracked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     tableName: 'patients',

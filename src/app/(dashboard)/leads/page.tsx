@@ -33,6 +33,7 @@ interface LeadItem {
   notes?: string;
   photos?: string; // JSON string of { front, top, sides, back }
   hairAnalysisData?: string; // JSON string of AI result
+  whatsappTracked?: boolean;
   createdAt: string;
 }
 
@@ -250,16 +251,21 @@ export default function LeadPipelinePage() {
                         </div>
 
                         {/* Badges for Hair Photos & AI Norwood Scale */}
-                        {(photoCount > 0 || aiObj) && (
+                        {(photoCount > 0 || aiObj || lead.whatsappTracked) && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-1">
                             {photoCount > 0 && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded-md">
-                                <Camera className="w-3 h-3" /> {photoCount} Photos
+                                <Camera className="w-3.5 h-3.5" /> {photoCount} Photos
                               </span>
                             )}
                             {aiObj?.norwoodStage && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-md">
                                 <Sparkles className="w-3 h-3" /> {aiObj.norwoodStage}
+                              </span>
+                            )}
+                            {lead.whatsappTracked && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                💬 Tracked
                               </span>
                             )}
                           </div>
@@ -300,11 +306,20 @@ export default function LeadPipelinePage() {
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-bold text-slate-900">{selectedLead.name}</h2>
                   <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 uppercase tracking-wide">
                     {selectedLead.status}
                   </span>
+                  {selectedLead.whatsappTracked ? (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wide flex items-center gap-1">
+                      💬 Tracked
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                      💬 Not Tracked
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-1 flex items-center gap-4">
                   {selectedLead.email && <span>✉️ {selectedLead.email}</span>}
@@ -450,6 +465,43 @@ export default function LeadPipelinePage() {
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {selectedLead.phone && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const aiObj = parseAnalysis(selectedLead.hairAnalysisData);
+                      const stage = aiObj?.norwoodStage || 'Uncertain';
+                      const grafts = aiObj?.estimatedGraftRequirement ? `${aiObj.estimatedGraftRequirement.minimumGrafts}-${aiObj.estimatedGraftRequirement.maximumGrafts}` : '1800-2200';
+                      const rec = aiObj?.procedureAssessment?.preliminaryRecommendation || 'FUE Hair Transplant';
+                      
+                      const message = `Hello ${selectedLead.name}, this is ASG Hair Clinic following up on your AI Hair Test. Your report indicates Norwood Stage ${stage} with an estimated graft requirement of ${grafts} grafts. We recommend a ${rec} procedure. Would you like to schedule a free video consultation with our specialists?`;
+                      
+                      // Pre-fill clean phone number digits
+                      const cleanPhone = selectedLead.phone.replace(/[^0-9]/g, '');
+                      const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+                      window.open(url, '_blank');
+
+                      // Fire API to update database tracking status
+                      try {
+                        await fetch('/api/public/track-whatsapp', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ leadId: selectedLead.id })
+                        });
+                        selectedLead.whatsappTracked = true;
+                        fetchLeads();
+                      } catch (e) {
+                        console.error('Failed to mark WhatsApp tracked:', e);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all"
+                  >
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M17.472 14.382c-.022-.08-.124-.134-.262-.204-.136-.07-1.036-.51-1.197-.568-.162-.058-.28-.088-.398.088-.118.176-.456.568-.56.686-.104.12-.208.134-.344.065-.136-.07-.577-.213-1.097-.676-.406-.362-.68-.81-.76-.948-.08-.136-.008-.21.06-.278.062-.062.136-.158.205-.238.07-.08.092-.136.137-.226.046-.09.022-.168-.01-.238-.03-.07-.28-.676-.384-.925-.1-.24-.2-.208-.28-.213-.07-.002-.153-.002-.236-.002-.084 0-.22.03-.336.158-.116.128-.444.434-.444 1.058 0 .624.454 1.228.516 1.312.06.084.892 1.362 2.162 1.912.302.13.538.208.722.267.302.096.577.082.795.05.243-.036.75-.306.855-.602.106-.296.106-.55.074-.602-.03-.05-.136-.08-.264-.15zM12 2C6.477 2 2 6.477 2 12c0 2.01.593 3.882 1.614 5.46L2.03 22l4.73-1.547C8.258 21.282 10.076 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.724 0-3.32-.54-4.636-1.46l-.333-.23-2.73.893.91-2.617-.253-.356C4.086 15.027 3.5 13.58 3.5 12c0-4.687 3.813-8.5 8.5-8.5s8.5 3.813 8.5 8.5-3.813 8.5-8.5 8.5z"/>
+                    </svg>
+                    <span>WhatsApp Follow-up</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleConvertToPatient(selectedLead)}

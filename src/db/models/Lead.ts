@@ -24,6 +24,7 @@ export interface LeadAttributes {
   notes?: string;
   photos?: string; // JSON string of photo views { front, top, sides, back }
   hairAnalysisData?: string; // JSON string of full AI analysis results
+  whatsappTracked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -72,6 +73,10 @@ export const Lead = sequelize.define<LeadInstance>(
     notes: DataTypes.TEXT,
     photos: DataTypes.TEXT('long'),
     hairAnalysisData: DataTypes.TEXT('long'),
+    whatsappTracked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     tableName: 'leads',
