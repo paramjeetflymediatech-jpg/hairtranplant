@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SweetAlert from '../components/SweetAlert';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
 
@@ -88,6 +89,51 @@ export default function PatientPortalScreen({
 }: Props) {
   const [token, setToken] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // SweetAlert State
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm';
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm',
+    title: string,
+    message: string,
+    onConfirm?: () => void,
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlertConfig({
+      visible: true,
+      type,
+      title,
+      message,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+      onCancel: onCancel ? () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onCancel();
+      } : undefined,
+      confirmText,
+      cancelText
+    });
+  };
 
   // Tab / Drawer Navigation State
   const [activeTab, setActiveTab] = useState<'treatment' | 'profile'>('treatment');
@@ -222,7 +268,7 @@ export default function PatientPortalScreen({
         await AsyncStorage.removeItem('auth_token');
         setToken('');
         setIsLoggedIn(false);
-        Alert.alert('Session Expired', 'Please log in again.');
+        showAlert('warning', 'Session Expired', 'Please log in again.');
       }
     } catch (e) {
       console.error(e);
@@ -413,7 +459,7 @@ export default function PatientPortalScreen({
 
   const handleLogin = async () => {
     if (!emailInput || !passwordInput) {
-      Alert.alert('Details Required', 'Email and password are required.');
+      showAlert('error', 'Details Required', 'Email and password are required.');
       return;
     }
 
@@ -437,7 +483,7 @@ export default function PatientPortalScreen({
       setIsLoggedIn(true);
       fetchPortalData(data.token);
     } catch (e: any) {
-      Alert.alert('Login Failed', e.message);
+      showAlert('error', 'Login Failed', e.message);
     } finally {
       setIsLoggingIn(false);
     }
@@ -445,7 +491,7 @@ export default function PatientPortalScreen({
 
   const handleSendResetLink = async () => {
     if (!forgotEmail.trim()) {
-      Alert.alert('Email Required', 'Please enter your registered email address.');
+      showAlert('error', 'Email Required', 'Please enter your registered email address.');
       return;
     }
     setIsResetting(true);
@@ -460,21 +506,17 @@ export default function PatientPortalScreen({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
       
-      Alert.alert(
+      showAlert(
+        'success',
         'Reset Link Generated',
         'A secure password reset link has been simulated. If an account is registered with this email, the reset link is printed in the server logs.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsForgotMode(false);
-              setForgotEmail('');
-            }
-          }
-        ]
+        () => {
+          setIsForgotMode(false);
+          setForgotEmail('');
+        }
       );
     } catch (e: any) {
-      Alert.alert('Request Failed', e.message);
+      showAlert('error', 'Request Failed', e.message);
     } finally {
       setIsResetting(false);
     }
@@ -491,12 +533,12 @@ export default function PatientPortalScreen({
 
   const handleUpdateProfile = async () => {
     if (!editName) {
-      Alert.alert('Validation Error', 'Full Name is required.');
+      showAlert('error', 'Validation Error', 'Full Name is required.');
       return;
     }
 
     if (newPassword && newPassword !== confirmPassword) {
-      Alert.alert('Validation Error', 'New passwords do not match.');
+      showAlert('error', 'Validation Error', 'New passwords do not match.');
       return;
     }
 
@@ -539,9 +581,9 @@ export default function PatientPortalScreen({
       setNewPassword('');
       setConfirmPassword('');
 
-      Alert.alert('Success', 'Your profile details have been updated successfully.');
+      showAlert('success', 'Success', 'Your profile details have been updated successfully.');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to update profile');
+      showAlert('error', 'Error', e.message || 'Failed to update profile');
     } finally {
       setIsSavingProfile(false);
     }
@@ -902,6 +944,16 @@ export default function PatientPortalScreen({
           </View>
         </View>
       </Modal>
+      <SweetAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+      />
     </View>
   );
 }

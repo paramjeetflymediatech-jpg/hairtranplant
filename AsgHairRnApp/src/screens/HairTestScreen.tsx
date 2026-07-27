@@ -10,6 +10,7 @@ import {
   Linking, 
   Alert 
 } from 'react-native';
+import SweetAlert from '../components/SweetAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { BASE_URL } from '../config/apiConfig';
@@ -86,6 +87,51 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
   const [token, setToken] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // SweetAlert State
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm';
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm',
+    title: string,
+    message: string,
+    onConfirm?: () => void,
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlertConfig({
+      visible: true,
+      type,
+      title,
+      message,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+      onCancel: onCancel ? () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onCancel();
+      } : undefined,
+      confirmText,
+      cancelText
+    });
+  };
+
   // Form Questionnaire States
   const [gender, setGender] = useState('');
   const [age, setAge] = useState('');
@@ -154,19 +200,19 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
 
   const nextStep = () => {
     if (step === 1 && (!gender || !age)) {
-      Alert.alert('Details Required', 'Please select both your gender and age group.');
+      showAlert('error', 'Details Required', 'Please select both your gender and age group.');
       return;
     }
     if (step === 2 && (!thinningArea || !fallSpeed)) {
-      Alert.alert('Details Required', 'Please specify your thinning area and rate of hair fall.');
+      showAlert('error', 'Details Required', 'Please specify your thinning area and rate of hair fall.');
       return;
     }
     if (step === 3 && (!sleep || !stress || !diet || !dandruff)) {
-      Alert.alert('Details Required', 'Please provide sleep, stress, diet, and dandruff details.');
+      showAlert('error', 'Details Required', 'Please provide sleep, stress, diet, and dandruff details.');
       return;
     }
     if (step === 4 && !familyHistory) {
-      Alert.alert('Details Required', 'Please answer the family history query.');
+      showAlert('error', 'Details Required', 'Please answer the family history query.');
       return;
     }
     setStep(step + 1);
@@ -176,7 +222,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
 
   const handleSubmit = async () => {
     if (!name || !email) {
-      Alert.alert('Contact Required', 'Please enter your name and email to receive the report.');
+      showAlert('error', 'Contact Required', 'Please enter your name and email to receive the report.');
       return;
     }
 
@@ -220,9 +266,9 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
       setPatientId(data.patientId || null);
       setWhatsappTracked(false);
 
-      Alert.alert('Analysis Complete!', 'Your scalp assessment diagnostics report is ready.');
+      showAlert('success', 'Analysis Complete!', 'Your scalp assessment diagnostics report is ready.');
     } catch (err: any) {
-      Alert.alert('Diagnostics Failed', err.message || 'Connection failed.');
+      showAlert('error', 'Diagnostics Failed', err.message || 'Connection failed.');
     } finally {
       setLoading(false);
     }
@@ -230,7 +276,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
 
   const handleCreateAccount = async () => {
     if (!registerPassword) {
-      Alert.alert('Password Required', 'Please enter a password.');
+      showAlert('error', 'Password Required', 'Please enter a password.');
       return;
     }
 
@@ -256,9 +302,9 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
       setIsLoggedIn(true);
       setIsGuest(false);
 
-      Alert.alert('Account Created!', 'Your account has been registered successfully.');
+      showAlert('success', 'Account Created!', 'Your account has been registered successfully.');
     } catch (e: any) {
-      Alert.alert('Registration Failed', e.message);
+      showAlert('error', 'Registration Failed', e.message);
     } finally {
       setIsRegistering(false);
     }
@@ -472,7 +518,8 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <View style={{ flex: 1 }}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>AI Hair Diagnostic Test</Text>
 
       {loading ? (
@@ -753,6 +800,17 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
         <Text style={styles.backHomeBtnText}>Back to Clinic Info</Text>
       </TouchableOpacity>
     </ScrollView>
+    <SweetAlert
+      visible={alertConfig.visible}
+      type={alertConfig.type}
+      title={alertConfig.title}
+      message={alertConfig.message}
+      onConfirm={alertConfig.onConfirm}
+      onCancel={alertConfig.onCancel}
+      confirmText={alertConfig.confirmText}
+      cancelText={alertConfig.cancelText}
+    />
+  </View>
   );
 }
 

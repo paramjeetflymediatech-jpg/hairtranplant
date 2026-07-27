@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
+import SweetAlert from '../components/SweetAlert';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
 
@@ -22,6 +23,51 @@ export default function ProfileScreen({
   onDrawerOpen, onLogout, onBack, onProfileSaved,
 }: Props) {
   const [editName, setEditName] = useState(patientName);
+
+  // SweetAlert State
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm';
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: 'success' | 'error' | 'warning' | 'info' | 'confirm',
+    title: string,
+    message: string,
+    onConfirm?: () => void,
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlertConfig({
+      visible: true,
+      type,
+      title,
+      message,
+      onConfirm: () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+      onCancel: onCancel ? () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        onCancel();
+      } : undefined,
+      confirmText,
+      cancelText
+    });
+  };
   const [editPhone, setEditPhone] = useState(patientPhone);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -34,9 +80,9 @@ export default function ProfileScreen({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSave = async () => {
-    if (!editName.trim()) { Alert.alert('Validation Error', 'Full Name is required.'); return; }
+    if (!editName.trim()) { showAlert('error', 'Validation Error', 'Full Name is required.'); return; }
     if (newPassword && newPassword !== confirmPassword) {
-      Alert.alert('Validation Error', 'New passwords do not match.'); return;
+      showAlert('error', 'Validation Error', 'New passwords do not match.'); return;
     }
     setIsSaving(true);
     try {
@@ -51,40 +97,38 @@ export default function ProfileScreen({
       if (!res.ok) throw new Error(data.error || 'Failed to update profile');
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       onProfileSaved(data.user?.name || editName, data.user?.phone || editPhone, data.token);
-      Alert.alert('Success ✓', 'Your profile has been updated successfully.');
+      showAlert('success', 'Success ✓', 'Your profile has been updated successfully.');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to update profile');
+      showAlert('error', 'Error', e.message || 'Failed to update profile');
     } finally { setIsSaving(false); }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showAlert(
+      'confirm',
       'Delete Account',
       'Are you absolutely sure you want to delete your account? This action is permanent and will delete all your clinical records, appointments, and photos.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              const res = await fetch(`${BASE_URL}/api/auth/me`, {
-                method: 'DELETE',
-                headers: { Cookie: `graftdesk_session=${token}` },
-              });
-              const data = await res.json();
-              if (!res.ok) throw new Error(data.error || 'Failed to delete account');
-              Alert.alert('Account Deleted', 'Your account has been deleted permanently.');
-              onLogout();
-            } catch (e: any) {
-              Alert.alert('Error', e.message || 'Failed to delete account');
-            } finally {
-              setIsDeleting(false);
-            }
-          }
+      async () => {
+        setIsDeleting(true);
+        try {
+          const res = await fetch(`${BASE_URL}/api/auth/me`, {
+            method: 'DELETE',
+            headers: { Cookie: `graftdesk_session=${token}` },
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+          showAlert('success', 'Account Deleted', 'Your account has been deleted permanently.', () => {
+            onLogout();
+          });
+        } catch (e: any) {
+          showAlert('error', 'Error', e.message || 'Failed to delete account');
+        } finally {
+          setIsDeleting(false);
         }
-      ]
+      },
+      () => {},
+      'Delete Permanently',
+      'Cancel'
     );
   };
 
@@ -167,6 +211,16 @@ export default function ProfileScreen({
           <Text style={s.backBtnText}>← Back to Dashboard</Text>
         </TouchableOpacity>
       </ScrollView>
+      <SweetAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+      />
     </View>
   );
 }
