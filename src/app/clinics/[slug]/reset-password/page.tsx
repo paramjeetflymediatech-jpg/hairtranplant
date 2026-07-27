@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Clinic } from '@/db/models';
 import { notFound } from 'next/navigation';
 import ClinicResetPasswordClient from './ClinicResetPasswordClient';
@@ -26,5 +26,14 @@ export default async function ClinicResetPasswordPage({ params }: PageProps) {
     themeColor: clinic.themeColor || null,
   };
 
-  return <ClinicResetPasswordClient clinic={serializedClinic} />;
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ClinicResetPasswordClient clinic={serializedClinic} />
+    </Suspense>
+  );
 }
+
