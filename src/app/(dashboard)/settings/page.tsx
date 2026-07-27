@@ -48,6 +48,7 @@ export default function ClinicSettingsPage() {
   // Custom asset previews
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bgPreview, setBgPreview] = useState<string | null>(null);
+  const [featurePreview, setFeaturePreview] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState('#0d9488');
 
@@ -96,11 +97,13 @@ export default function ClinicSettingsPage() {
           timezone: data.clinic.timezone || 'UTC',
           logo: data.clinic.logo || '',
           backgroundImage: data.clinic.backgroundImage || '',
+          featureImage: data.clinic.featureImage || '',
           themeColor: data.clinic.themeColor || '#0d9488',
         });
 
         setLogoPreview(data.clinic.logo || null);
         setBgPreview(data.clinic.backgroundImage || null);
+        setFeaturePreview(data.clinic.featureImage || null);
         setSlug(data.clinic.slug);
         setThemeColor(data.clinic.themeColor || '#0d9488');
       } catch (err: any) {
@@ -189,6 +192,20 @@ export default function ClinicSettingsPage() {
       const base64 = reader.result as string;
       form.setFieldsValue({ backgroundImage: base64 });
       setBgPreview(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle Feature Image file upload
+  const handleFeatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      form.setFieldsValue({ featureImage: base64 });
+      setFeaturePreview(base64);
     };
     reader.readAsDataURL(file);
   };
@@ -632,7 +649,7 @@ export default function ClinicSettingsPage() {
                           </div>
                         }
                       >
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                           {/* Column 1: Clinic Logo Dropzone */}
                           <div className="space-y-4 text-center bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
                             <div>
@@ -740,6 +757,64 @@ export default function ClinicSettingsPage() {
                               )}
                             </div>
                             <Form.Item name="backgroundImage" style={{ display: 'none' }}>
+                              <Input type="hidden" />
+                            </Form.Item>
+                          </div>
+
+                          {/* Column 3: About Section Feature Image Dropzone */}
+                          <div className="space-y-4 text-center bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                            <div>
+                              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider block mb-1">About Section Feature Image</span>
+                              <p className="text-[11px] text-slate-400 font-medium mb-4">Branded visual shown in the "Why Take the Analysis" section</p>
+                              
+                              <div className="mx-auto w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-900 flex items-center justify-center overflow-hidden relative group shadow-inner">
+                                {featurePreview ? (
+                                  <>
+                                    <img src={featurePreview} alt="Feature Preview" className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform" />
+                                    <div className="absolute top-2 right-2 bg-slate-950/80 text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/20 backdrop-blur-md">
+                                      Live Preview
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-center p-3 text-slate-400">
+                                    <PictureOutlined className="text-4xl text-slate-500 mb-1" />
+                                    <span className="text-[11px] font-bold text-slate-400 block">Default Clinical Image</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-2 pt-2">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                id="feature-upload-input"
+                                className="hidden"
+                                style={{ display: 'none' }}
+                                onChange={handleFeatureChange}
+                              />
+                              <label
+                                htmlFor="feature-upload-input"
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer transition-colors shadow-sm"
+                              >
+                                <UploadOutlined /> {featurePreview ? 'Change Image' : 'Upload Image'}
+                              </label>
+                              {featurePreview && (
+                                <Button
+                                  type="text"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => {
+                                    form.setFieldsValue({ featureImage: '' });
+                                    setFeaturePreview(null);
+                                  }}
+                                  className="rounded-xl text-xs font-bold"
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                            <Form.Item name="featureImage" style={{ display: 'none' }}>
                               <Input type="hidden" />
                             </Form.Item>
                           </div>

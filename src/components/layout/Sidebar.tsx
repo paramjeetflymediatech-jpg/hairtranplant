@@ -27,9 +27,10 @@ import { clsx } from 'clsx';
 interface SidebarProps {
   userRole?: string;
   clinicName?: string;
+  clinicSlug?: string;
 }
 
-export function Sidebar({ userRole = 'CLINIC_ADMIN', clinicName = 'Apex Hair Institute' }: SidebarProps) {
+export function Sidebar({ userRole = 'CLINIC_ADMIN', clinicName = 'Apex Hair Institute', clinicSlug }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -197,7 +198,7 @@ export function Sidebar({ userRole = 'CLINIC_ADMIN', clinicName = 'Apex Hair Ins
             <button
               onClick={async () => {
                 await fetch('/api/auth/logout', { method: 'POST' });
-                window.location.href = '/login';
+                window.location.href = clinicSlug ? `/clinics/${clinicSlug}` : '/login';
               }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Sign Out"

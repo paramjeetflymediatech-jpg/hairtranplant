@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const { name, email, phone, address, city, state, country, timezone, logo, backgroundImage, themeColor } = await req.json();
+    const { name, email, phone, address, city, state, country, timezone, logo, backgroundImage, featureImage, themeColor } = await req.json();
 
     const clinic = await Clinic.findByPk(session.clinicId);
     if (!clinic) {
@@ -44,6 +44,7 @@ export async function PUT(req: NextRequest) {
       timezone,
       logo,
       backgroundImage,
+      featureImage,
       themeColor
     });
 

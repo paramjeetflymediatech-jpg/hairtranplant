@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { ConfigProvider, Steps, Progress, Input, Button, Spin, theme as antdTheme } from 'antd';
 import { Sparkles, Activity, ShieldCheck, Award } from 'lucide-react';
 import { 
@@ -308,6 +309,14 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
           backgroundPosition: 'center',
         } : {}}
       >
+        {/* Back to Clinic Homepage */}
+        <Link 
+          href={`/clinics/${clinic.slug}`}
+          className="absolute top-6 left-6 z-20 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white transition-all backdrop-blur-md"
+        >
+          <ArrowLeftOutlined />
+          <span>Back to Home</span>
+        </Link>
         {/* Ambient background glows using dynamic theme color */}
         <div 
           className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none" 

@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 interface HeaderProps {
   userRole?: string;
   userName?: string;
+  clinicSlug?: string;
 }
 
 interface NotificationItem {
@@ -19,7 +20,7 @@ interface NotificationItem {
   type: 'success' | 'info' | 'warning';
 }
 
-export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }: HeaderProps) {
+export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova', clinicSlug }: HeaderProps) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -216,7 +217,7 @@ export function Header({ userRole = 'CLINIC_ADMIN', userName = 'Elena Rostova' }
                 <button
                   onClick={async () => {
                     await fetch('/api/auth/logout', { method: 'POST' });
-                    window.location.href = '/login';
+                    window.location.href = clinicSlug ? `/clinics/${clinicSlug}` : '/login';
                   }}
                   className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 transition-colors font-bold"
                 >

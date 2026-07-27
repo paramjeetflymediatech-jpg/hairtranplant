@@ -14,6 +14,8 @@ export interface UserAttributes {
   phone?: string;
   isActive: boolean;
   lastLoginAt?: Date;
+  resetToken?: string | null;
+  resetTokenExpires?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,6 +60,14 @@ export const User = sequelize.define<UserInstance>(
       defaultValue: true,
     },
     lastLoginAt: DataTypes.DATE,
+    resetToken: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    resetTokenExpires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: 'users',

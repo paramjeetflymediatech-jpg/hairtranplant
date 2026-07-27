@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser, verifyPassword, hashPassword, signToken } from '@/lib/auth';
-import { User, Clinic, ensureDbSynced } from '@/db/models';
+import { User, Clinic, Patient, ensureDbSynced } from '@/db/models';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,3 +105,50 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Failed to update profile' }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  try {
+    await ensureDbSynced();
+    const session = await getSessionUser();
+    if (!session) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const user = await User.findByPk(session.userId);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // If it's a patient, also delete the Patient record (cascade deletes related data)
+    if (user.role === 'PATIENT') {
+      await Patient.destroy({
+        where: {
+          email: user.email,
+          clinicId: user.clinicId,
+        },
+      });
+    }
+
+    // Delete the User account
+    await user.destroy();
+
+    // Clear session cookie
+    const res = NextResponse.json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+
+    res.cookies.set('graftdesk_session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    return res;
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to delete account' }, { status: 500 });
+  }
+}
+

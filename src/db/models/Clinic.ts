@@ -9,6 +9,7 @@ export interface ClinicAttributes {
   phone?: string;
   logo?: string;
   backgroundImage?: string;
+  featureImage?: string;
   themeColor?: string;
   address?: string;
   city?: string;
@@ -49,6 +50,7 @@ export const Clinic = sequelize.define<ClinicInstance>(
     phone: DataTypes.STRING,
     logo: DataTypes.TEXT('long'),
     backgroundImage: DataTypes.TEXT('long'),
+    featureImage: DataTypes.TEXT('long'),
     themeColor: DataTypes.STRING,
     address: DataTypes.STRING,
     city: DataTypes.STRING,

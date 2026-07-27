@@ -25,44 +25,169 @@ type Props = {
 };
 
 function ReportDetail({ result }: { result: any }) {
-  const info = STAGE_DETAILS[result?.norwoodStage] || STAGE_DETAILS.UNCERTAIN;
-  const graftMin = result?.estimatedGraftRequirement?.minimumGrafts ?? '–';
-  const graftMax = result?.estimatedGraftRequirement?.maximumGrafts ?? '–';
-  const donorRating = result?.donorArea?.rating ?? '–';
-  const density = result?.donorArea?.densityEstimateGraftsPerCm2 ?? null;
-  const rec = result?.procedureAssessment?.preliminaryRecommendation ?? '–';
-
-  const rows: [string, string][] = [
-    ['Norwood Stage', result?.norwoodStage ?? '–'],
-    ['Graft Range', `${graftMin} – ${graftMax} grafts`],
-    ['Donor Rating', donorRating],
-    ...(density ? [['Hair Density', `${density} grafts/cm²`] as [string,string]] : []),
-    ['Procedure', rec],
-  ];
+  if (!result) return null;
+  const info = STAGE_DETAILS[result.norwoodStage] || STAGE_DETAILS.UNCERTAIN;
+  const confidence = result.confidenceScore
+    ? `${(result.confidenceScore <= 1 ? result.confidenceScore * 100 : result.confidenceScore).toFixed(0)}%`
+    : 'N/A';
 
   return (
     <View>
+      {/* 1. IMAGE QUALITY & CONFIDENCE */}
+      <View style={rd.infoBox}>
+        <Text style={rd.infoTitle}>Assessment Confidence & Quality</Text>
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>AI Confidence Score</Text>
+          <Text style={rd.rowValue}>{confidence}</Text>
+        </View>
+        <View style={rd.div} />
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Image Quality Overall</Text>
+          <Text style={rd.rowValue}>{result.imageQuality?.overall || 'GOOD'}</Text>
+        </View>
+        {result.imageQuality?.visibleAreas && result.imageQuality.visibleAreas.length > 0 && (
+          <Text style={rd.detailListText}>
+            Visible Areas: {result.imageQuality.visibleAreas.join(', ')}
+          </Text>
+        )}
+      </View>
+
+      {/* 2. ALOPECIA CLASSIFICATION */}
       <View style={rd.infoBox}>
         <Text style={rd.infoTitle}>{info.title}</Text>
         <Text style={rd.infoDesc}>{info.desc}</Text>
+        {result.norwoodDescription ? (
+          <Text style={[rd.infoDesc, { marginTop: 6, fontStyle: 'italic' }]}>
+            AI Description: {result.norwoodDescription}
+          </Text>
+        ) : null}
+        <Text style={[rd.infoDesc, { fontWeight: 'bold', marginTop: 8 }]}>
+          Care Suggestion: {info.care}
+        </Text>
       </View>
-      {rows.map(([label, value], i) => (
-        <View key={i}>
-          <View style={rd.row}>
-            <Text style={rd.rowLabel}>{label}</Text>
-            <Text style={rd.rowValue}>{value}</Text>
+
+      {/* 3. LOSS PATTERN & SEVERITY */}
+      <View style={rd.infoBox}>
+        <Text style={rd.infoTitle}>Loss Pattern & Severity</Text>
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Pattern Type</Text>
+          <Text style={rd.rowValue}>{result.hairLossPattern || 'UNCERTAIN'}</Text>
+        </View>
+        <View style={rd.div} />
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Severity Level</Text>
+          <Text style={rd.rowValue}>{result.hairLossSeverity || 'UNCERTAIN'}</Text>
+        </View>
+      </View>
+
+      {/* 4. DONOR AREA */}
+      <View style={rd.infoBox}>
+        <Text style={rd.infoTitle}>Donor Area Assessment</Text>
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Quality Rating</Text>
+          <Text style={rd.rowValue}>{result.donorArea?.rating || 'GOOD'}</Text>
+        </View>
+        <View style={rd.div} />
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Density Estimate</Text>
+          <Text style={rd.rowValue}>
+            {result.donorArea?.densityEstimateGraftsPerCm2 
+              ? `${result.donorArea.densityEstimateGraftsPerCm2} Grafts/cm²` 
+              : 'N/A'}
+          </Text>
+        </View>
+        {result.donorArea?.observations ? (
+          <Text style={[rd.infoDesc, { marginTop: 6 }]}>
+            Observations: {result.donorArea.observations}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* 5. GRAFT ESTIMATION & RECOMMENDATION */}
+      <View style={rd.infoBox}>
+        <Text style={rd.infoTitle}>Procedure Recommendation</Text>
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Suggested Method</Text>
+          <Text style={rd.rowValue}>{result.procedureAssessment?.preliminaryRecommendation || 'FUE'}</Text>
+        </View>
+        <View style={rd.div} />
+        <View style={rd.row}>
+          <Text style={rd.rowLabel}>Grafts Range Estimate</Text>
+          <Text style={rd.rowValue}>
+            {result.estimatedGraftRequirement?.minimumGrafts || 1500} - {result.estimatedGraftRequirement?.maximumGrafts || 2000}
+          </Text>
+        </View>
+        {result.estimatedGraftRequirement?.estimatedRangeDescription ? (
+          <Text style={[rd.infoDesc, { marginTop: 6, fontWeight: '500' }]}>
+            Range Details: {result.estimatedGraftRequirement.estimatedRangeDescription}
+          </Text>
+        ) : null}
+        {result.procedureAssessment?.rationale ? (
+          <Text style={[rd.infoDesc, { marginTop: 8, color: THEME.textSecondary }]}>
+            Rationale: {result.procedureAssessment.rationale}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* 6. ZONE BREAKDOWN */}
+      {result.zoneBreakdown && (
+        <View style={rd.infoBox}>
+          <Text style={rd.infoTitle}>Zone-by-Zone Breakdown</Text>
+          
+          <View style={rd.zoneBlock}>
+            <Text style={rd.zoneLabel}>Frontal Recession</Text>
+            <Text style={rd.zoneValue}>{result.zoneBreakdown.frontalRecession || 'Moderate Hair Loss'}</Text>
           </View>
           <View style={rd.div} />
+
+          <View style={rd.zoneBlock}>
+            <Text style={rd.zoneLabel}>Mid-Scalp Density</Text>
+            <Text style={rd.zoneValue}>{result.zoneBreakdown.midScalpDensity || 'Thinning Detected'}</Text>
+          </View>
+          <View style={rd.div} />
+
+          <View style={rd.zoneBlock}>
+            <Text style={rd.zoneLabel}>Crown Whorl</Text>
+            <Text style={rd.zoneValue}>{result.zoneBreakdown.crownVertex || 'Thinning whorl'}</Text>
+          </View>
+          <View style={rd.div} />
+
+          <View style={rd.zoneBlock}>
+            <Text style={rd.zoneLabel}>Temporal Peaks</Text>
+            <Text style={rd.zoneValue}>{result.zoneBreakdown.temporalPeaks || 'Mild Recession'}</Text>
+          </View>
         </View>
-      ))}
-      <View style={rd.infoBox}>
-        <Text style={rd.infoTitle}>Clinical Observations</Text>
-        {info.symptoms.map((s, i) => <Text key={i} style={rd.obs}>• {s}</Text>)}
-      </View>
-      <View style={rd.infoBox}>
-        <Text style={rd.infoTitle}>Recommended Next Step</Text>
-        <Text style={rd.infoDesc}>{info.care}</Text>
-      </View>
+      )}
+
+      {/* 7. CLINICAL OBSERVATIONS */}
+      {result.clinicalObservations && result.clinicalObservations.length > 0 && (
+        <View style={rd.infoBox}>
+          <Text style={[rd.infoTitle, { color: THEME.headerBg }]}>Clinical Observations</Text>
+          {result.clinicalObservations.map((obs: string, idx: number) => (
+            <Text key={idx} style={rd.obs}>• {obs}</Text>
+          ))}
+        </View>
+      )}
+
+      {/* 8. NEXT STEPS */}
+      {result.recommendedNextSteps && result.recommendedNextSteps.length > 0 && (
+        <View style={rd.infoBox}>
+          <Text style={[rd.infoTitle, { color: '#059669' }]}>Recommended Next Steps</Text>
+          {result.recommendedNextSteps.map((stepStr: string, idx: number) => (
+            <Text key={idx} style={[rd.obs, { color: THEME.textSecondary }]}>• {stepStr}</Text>
+          ))}
+        </View>
+      )}
+
+      {/* 9. CLINICAL DISCLAIMER */}
+      {result.disclaimer ? (
+        <View style={[rd.infoBox, { backgroundColor: '#fef2f2', borderColor: '#fee2e2' }]}>
+          <Text style={[rd.infoTitle, { color: '#dc2626' }]}>Clinical Disclaimer</Text>
+          <Text style={[rd.infoDesc, { color: '#991b1b', fontSize: 10 }]}>
+            {result.disclaimer}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -197,6 +322,10 @@ const rd = StyleSheet.create({
   rowValue: { fontSize: 12, fontWeight: 'bold', color: THEME.textPrimary },
   div: { height: 1, backgroundColor: THEME.cardBorder },
   obs: { fontSize: 11, color: THEME.textSecondary, marginTop: 4 },
+  zoneBlock: { paddingVertical: 10 },
+  zoneLabel: { fontSize: 11, color: THEME.primary, fontWeight: 'bold', marginBottom: 4 },
+  zoneValue: { fontSize: 12, fontWeight: '600', color: THEME.textPrimary, lineHeight: 16 },
+  detailListText: { fontSize: 10, color: THEME.textSecondary, marginTop: 6, fontWeight: '600' },
 });
 
 /* ── Screen styles ──────────────────────────────────────────────────────────── */

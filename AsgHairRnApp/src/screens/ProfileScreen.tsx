@@ -27,6 +27,11 @@ export default function ProfileScreen({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSave = async () => {
     if (!editName.trim()) { Alert.alert('Validation Error', 'Full Name is required.'); return; }
@@ -50,6 +55,37 @@ export default function ProfileScreen({
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update profile');
     } finally { setIsSaving(false); }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you absolutely sure you want to delete your account? This action is permanent and will delete all your clinical records, appointments, and photos.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              const res = await fetch(`${BASE_URL}/api/auth/me`, {
+                method: 'DELETE',
+                headers: { Cookie: `graftdesk_session=${token}` },
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+              Alert.alert('Account Deleted', 'Your account has been deleted permanently.');
+              onLogout();
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Failed to delete account');
+            } finally {
+              setIsDeleting(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -89,12 +125,30 @@ export default function ProfileScreen({
         <View style={s.card}>
           <Text style={s.cardTitle}>Change Password</Text>
           <Text style={s.cardNote}>Leave blank to keep your current password.</Text>
+          
           <Text style={s.label}>Current Password</Text>
-          <TextInput value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry style={s.input} placeholderTextColor={THEME.textSecondary} placeholder="Current password" />
+          <View style={s.passwordInputContainer}>
+            <TextInput value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry={!showCurrentPassword} style={s.passwordInput} placeholderTextColor={THEME.textSecondary} placeholder="Current password" />
+            <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={s.eyeButton}>
+              <Text style={s.eyeText}>{showCurrentPassword ? '👁️' : '🙈'}</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={s.label}>New Password</Text>
-          <TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry style={s.input} placeholderTextColor={THEME.textSecondary} placeholder="New password" />
+          <View style={s.passwordInputContainer}>
+            <TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry={!showNewPassword} style={s.passwordInput} placeholderTextColor={THEME.textSecondary} placeholder="New password" />
+            <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={s.eyeButton}>
+              <Text style={s.eyeText}>{showNewPassword ? '👁️' : '🙈'}</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={s.label}>Confirm New Password</Text>
-          <TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry style={s.input} placeholderTextColor={THEME.textSecondary} placeholder="Confirm new password" />
+          <View style={s.passwordInputContainer}>
+            <TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showConfirmPassword} style={s.passwordInput} placeholderTextColor={THEME.textSecondary} placeholder="Confirm new password" />
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={s.eyeButton}>
+              <Text style={s.eyeText}>{showConfirmPassword ? '👁️' : '🙈'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={isSaving}>
@@ -103,6 +157,10 @@ export default function ProfileScreen({
 
         <TouchableOpacity style={s.logoutBtn} onPress={onLogout}>
           <Text style={s.logoutBtnText}>Log Out</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.deleteBtn} onPress={handleDeleteAccount} disabled={isDeleting}>
+          {isDeleting ? <ActivityIndicator color="#E53E3E" /> : <Text style={s.deleteBtnText}>Delete Account</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity style={s.backBtn} onPress={onBack}>
@@ -149,6 +207,31 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: THEME.cardBorder, borderRadius: 14,
     height: 48, paddingHorizontal: 16, fontSize: 13, color: THEME.textPrimary, backgroundColor: THEME.bg,
   },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: THEME.cardBorder,
+    borderRadius: 14,
+    height: 48,
+    backgroundColor: THEME.bg,
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 16,
+    fontSize: 13,
+    color: THEME.textPrimary,
+  },
+  eyeButton: {
+    paddingHorizontal: 12,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eyeText: {
+    fontSize: 16,
+  },
   saveBtn: {
     backgroundColor: THEME.primary, borderRadius: 16, height: 52,
     justifyContent: 'center', alignItems: 'center', marginBottom: 12,
@@ -160,6 +243,11 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: 12,
   },
   logoutBtnText: { color: THEME.primary, fontWeight: 'bold', fontSize: 14 },
+  deleteBtn: {
+    borderWidth: 1.5, borderColor: '#E53E3E', borderRadius: 16, height: 48,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 12,
+  },
+  deleteBtnText: { color: '#E53E3E', fontWeight: 'bold', fontSize: 14 },
   backBtn: { height: 44, justifyContent: 'center', alignItems: 'center' },
   backBtnText: { color: THEME.textSecondary, fontWeight: 'bold', fontSize: 13 },
 });

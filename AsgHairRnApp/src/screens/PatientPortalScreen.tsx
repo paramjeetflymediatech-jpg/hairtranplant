@@ -73,11 +73,19 @@ const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: str
 
 type Props = {
   onBack: () => void;
+  onDrawerOpen: () => void;
+  onPortalDataLoaded: (token: string, name: string, status: string, phone: string, analyses: any[]) => void;
   onGoToProfile: (token: string, name: string, status: string, phone: string, analyses: any[]) => void;
   onGoToHistory: (token: string, name: string, status: string, analyses: any[]) => void;
 };
 
-export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHistory }: Props) {
+export default function PatientPortalScreen({
+  onBack,
+  onDrawerOpen,
+  onPortalDataLoaded,
+  onGoToProfile,
+  onGoToHistory,
+}: Props) {
   const [token, setToken] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -93,6 +101,17 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot Password States
+  const [isForgotMode, setIsForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotPhone, setForgotPhone] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+  const [showForgotConfirmPassword, setShowForgotConfirmPassword] = useState(false);
 
   // Portal Data States
   const [loadingData, setLoadingData] = useState(false);
@@ -112,6 +131,9 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPasswordState, setShowNewPasswordState] = useState(false);
+  const [showConfirmPasswordState, setShowConfirmPasswordState] = useState(false);
 
   const openDrawer = () => setDrawerOpen(true);
   const closeDrawer = () => setDrawerOpen(false);
@@ -150,6 +172,9 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
 
           const analyses = patient.hairAnalyses;
           setAllAnalyses(analyses || []);
+
+          // Sync parent auth context
+          onPortalDataLoaded(activeToken, patient.name || 'Patient', patient.status || 'CONSULTATION', patient.phone || '', analyses || []);
 
           if (analyses && analyses.length > 0) {
             const lastAnalysis = analyses[0];
@@ -418,6 +443,43 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
     }
   };
 
+  const handleSendResetLink = async () => {
+    if (!forgotEmail.trim()) {
+      Alert.alert('Email Required', 'Please enter your registered email address.');
+      return;
+    }
+    setIsResetting(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      
+      Alert.alert(
+        'Reset Link Generated',
+        'A secure password reset link has been simulated. If an account is registered with this email, the reset link is printed in the server logs.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setIsForgotMode(false);
+              setForgotEmail('');
+            }
+          }
+        ]
+      );
+    } catch (e: any) {
+      Alert.alert('Request Failed', e.message);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const handleLogout = async () => {
     await AsyncStorage.removeItem('auth_token');
     setToken('');
@@ -498,7 +560,7 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
       {/* ====== FIXED PORTAL HEADER ====== */}
       {isLoggedIn && (
         <View style={styles.portalHeader}>
-          <TouchableOpacity style={styles.hamburgerBtn} onPress={openDrawer}>
+          <TouchableOpacity style={styles.hamburgerBtn} onPress={onDrawerOpen}>
             <View style={styles.hamLine} />
             <View style={styles.hamLine} />
             <View style={styles.hamLine} />
@@ -571,32 +633,51 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
                   />
 
                   <Text style={[styles.subHeading, { marginTop: 16 }]}>Change Account Password (Optional)</Text>
+                  
                   <Text style={styles.fieldLabel}>Current Password</Text>
-                  <TextInput
-                    placeholder="Enter Current Password"
-                    value={currentPassword}
-                    onChangeText={setCurrentPassword}
-                    secureTextEntry
-                    style={styles.input}
-                  />
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      placeholder="Enter Current Password"
+                      value={currentPassword}
+                      onChangeText={setCurrentPassword}
+                      secureTextEntry={!showCurrentPassword}
+                      style={styles.passwordInput}
+                      placeholderTextColor={THEME.textSecondary}
+                    />
+                    <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={styles.eyeButton}>
+                      <Text style={styles.eyeText}>{showCurrentPassword ? '👁️' : '🙈'}</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <Text style={styles.fieldLabel}>New Password</Text>
-                  <TextInput
-                    placeholder="Enter New Password"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry
-                    style={styles.input}
-                  />
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      placeholder="Enter New Password"
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      secureTextEntry={!showNewPasswordState}
+                      style={styles.passwordInput}
+                      placeholderTextColor={THEME.textSecondary}
+                    />
+                    <TouchableOpacity onPress={() => setShowNewPasswordState(!showNewPasswordState)} style={styles.eyeButton}>
+                      <Text style={styles.eyeText}>{showNewPasswordState ? '👁️' : '🙈'}</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <Text style={styles.fieldLabel}>Confirm New Password</Text>
-                  <TextInput
-                    placeholder="Confirm New Password"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    style={styles.input}
-                  />
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      placeholder="Confirm New Password"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirmPasswordState}
+                      style={styles.passwordInput}
+                      placeholderTextColor={THEME.textSecondary}
+                    />
+                    <TouchableOpacity onPress={() => setShowConfirmPasswordState(!showConfirmPasswordState)} style={styles.eyeButton}>
+                      <Text style={styles.eyeText}>{showConfirmPasswordState ? '👁️' : '🙈'}</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <TouchableOpacity
                     style={styles.saveProfileButton}
@@ -712,6 +793,37 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
               </TouchableOpacity>
             </View>
           )
+        ) : isForgotMode ? (
+          // Forgot Password View (Sends link to email)
+          <View style={styles.card}>
+            <Text style={styles.loginTitle}>Forgot Password</Text>
+            
+            <Text style={styles.forgotInstruction}>
+              Enter your registered email address below. We will generate a secure link to reset your password.
+            </Text>
+
+            <TextInput
+              placeholder="Registered Email Address"
+              value={forgotEmail}
+              onChangeText={setForgotEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+              placeholderTextColor={THEME.textSecondary}
+            />
+
+            <TouchableOpacity style={styles.loginButton} onPress={handleSendResetLink} disabled={isResetting}>
+              {isResetting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Send Reset Link</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.backToLoginBtn} onPress={() => setIsForgotMode(false)}>
+              <Text style={styles.backToLoginText}>← Back to Sign In</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           // Login View
           <View style={styles.card}>
@@ -724,15 +836,26 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
+              placeholderTextColor={THEME.textSecondary}
             />
 
-            <TextInput
-              placeholder="Account Password"
-              value={passwordInput}
-              onChangeText={setPasswordInput}
-              secureTextEntry
-              style={styles.input}
-            />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                placeholder="Account Password"
+                value={passwordInput}
+                onChangeText={setPasswordInput}
+                secureTextEntry={!showPassword}
+                style={styles.passwordInput}
+                placeholderTextColor={THEME.textSecondary}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+                <Text style={styles.eyeText}>{showPassword ? '👁️' : '🙈'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.forgotPasswordBtn} onPress={() => setIsForgotMode(true)}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoggingIn}>
               {isLoggingIn ? (
@@ -748,93 +871,6 @@ export default function PatientPortalScreen({ onBack, onGoToProfile, onGoToHisto
           <Text style={styles.backHomeBtnText}>← Back to Clinic Info</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* ====== HAMBURGER DRAWER ====== */}
-      {drawerOpen && (
-        <>
-          {/* Backdrop */}
-          <TouchableOpacity
-            style={styles.drawerBackdrop}
-            activeOpacity={1}
-            onPress={closeDrawer}
-          />
-
-          {/* Sidebar Panel */}
-          <View style={styles.drawerPanel}>
-            {/* Drawer Header */}
-            <View style={styles.drawerHeader}>
-              <View>
-                <Text style={styles.drawerBrand}>ASG Hair</Text>
-                <Text style={styles.drawerSubBrand}>Patient Portal</Text>
-              </View>
-              <TouchableOpacity onPress={closeDrawer} style={styles.drawerCloseBtn}>
-                <Text style={styles.drawerCloseBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Patient badge */}
-            <View style={styles.drawerPatientBadge}>
-              <View style={styles.drawerAvatar}>
-                <Text style={styles.drawerAvatarText}>
-                  {patientName ? patientName.charAt(0).toUpperCase() : 'P'}
-                </Text>
-              </View>
-              <View style={{ marginLeft: 12 }}>
-                <Text style={styles.drawerPatientName}>{patientName || 'Patient'}</Text>
-                <Text style={styles.drawerPatientStatus}>{patientStatus || 'CONSULTATION'}</Text>
-              </View>
-            </View>
-
-            <View style={styles.drawerDivider} />
-
-            {/* Nav Items */}
-            <TouchableOpacity
-              style={[styles.drawerNavItem, activeTab === 'treatment' && styles.drawerNavItemActive]}
-              onPress={() => handleDrawerNav('treatment')}
-            >
-              <Text style={styles.drawerNavIcon}>📊</Text>
-              <Text style={[styles.drawerNavText, activeTab === 'treatment' && styles.drawerNavTextActive]}>
-                Active Treatment
-              </Text>
-              {activeTab === 'treatment' && <View style={styles.drawerNavDot} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.drawerNavItem}
-              onPress={goToProfile}
-            >
-              <Text style={styles.drawerNavIcon}>👤</Text>
-              <Text style={styles.drawerNavText}>My Profile</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.drawerNavItem}
-              onPress={goToHistory}
-            >
-              <Text style={styles.drawerNavIcon}>📋</Text>
-              <Text style={styles.drawerNavText}>Test History</Text>
-            </TouchableOpacity>
-
-            <View style={styles.drawerDivider} />
-
-            <TouchableOpacity
-              style={styles.drawerNavItem}
-              onPress={() => { closeDrawer(); onBack(); }}
-            >
-              <Text style={styles.drawerNavIcon}>🏥</Text>
-              <Text style={styles.drawerNavText}>Back to Clinic Info</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.drawerNavItem, { marginTop: 'auto' }]}
-              onPress={() => { closeDrawer(); handleLogout(); }}
-            >
-              <Text style={styles.drawerNavIcon}>🚪</Text>
-              <Text style={[styles.drawerNavText, { color: '#FF6929' }]}>Log Out</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
 
       {/* Detailed Report Modal */}
       <Modal
@@ -1039,6 +1075,60 @@ const styles = StyleSheet.create({
     color: THEME.headerBg,
     backgroundColor: '#ffffff',
   },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 16,
+    height: 48,
+    marginBottom: 12,
+    backgroundColor: '#ffffff',
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 16,
+    fontSize: 13,
+    color: THEME.headerBg,
+  },
+  eyeButton: {
+    paddingHorizontal: 12,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eyeText: {
+    fontSize: 16,
+  },
+  forgotPasswordBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+    marginTop: 2,
+    paddingVertical: 4,
+  },
+  forgotPasswordText: {
+    color: THEME.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  backToLoginBtn: {
+    alignSelf: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  backToLoginText: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  forgotInstruction: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
   loginButton: {
     backgroundColor: THEME.primary,
     borderRadius: 16,
@@ -1240,7 +1330,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   portalHeaderSubtitle: {
-    color: THEME.primary,
+    color: THEME.accent,
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: 1,
@@ -1276,7 +1366,7 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: 280,
-    backgroundColor: THEME.headerBg,
+    backgroundColor: THEME.drawerBg,
     zIndex: 100,
     paddingBottom: 40,
     flexDirection: 'column',
@@ -1297,7 +1387,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   drawerSubBrand: {
-    color: THEME.primary,
+    color: THEME.accent,
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: 2,
@@ -1311,7 +1401,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   drawerCloseBtnText: {
-    color: THEME.drawerText,
+    color: '#ffffff',
     fontSize: 13,
     fontWeight: 'bold',
   },
@@ -1340,7 +1430,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   drawerPatientStatus: {
-    color: THEME.textSecondary,
+    color: THEME.accent,
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: 2,
@@ -1376,14 +1466,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawerNavTextActive: {
-    color: THEME.primary,
+    color: THEME.primaryLight,
     fontWeight: 'bold',
   },
   drawerNavDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: THEME.primary,
+    backgroundColor: THEME.primaryLight,
   },
 
   /* ── History pagination ── */

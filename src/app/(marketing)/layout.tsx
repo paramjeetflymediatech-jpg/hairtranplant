@@ -82,8 +82,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <ul className="space-y-2.5 text-xs">
               <li><Link href="/about" className="hover:text-teal-600 font-medium">About Us</Link></li>
               <li><Link href="/contact" className="hover:text-teal-600 font-medium">Book Demo</Link></li>
-              <li><a href="#" className="hover:text-teal-600 font-medium">Security & Compliance</a></li>
-              <li><a href="#" className="hover:text-teal-600 font-medium">HIPAA Readiness</a></li>
+              <li><Link href="/privacy" className="hover:text-teal-600 font-medium">Privacy Policy</Link></li>
+              <li><Link href="/delete-account" className="hover:text-teal-600 font-medium text-rose-600">Delete Account</Link></li>
             </ul>
           </div>
           <div>
