@@ -66,6 +66,10 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
+  const [visualizerPhoto, setVisualizerPhoto] = useState<string>('');
+  const [fluxResultPhoto, setFluxResultPhoto] = useState<string>('');
+  const [loadingFlux, setLoadingFlux] = useState<boolean>(false);
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(true);
@@ -243,6 +247,7 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
       if (!res.ok) throw new Error(data.error || 'Failed to analyze');
 
       setResult(data.analysis);
+      if (frontPhoto) setVisualizerPhoto(frontPhoto);
       setActiveLeadId(data.leadId || null);
       setIsGuest(data.isGuest !== false);
       setPatientId(data.patientId || null);
@@ -268,6 +273,80 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerateVisualizer = async () => {
+    if (!visualizerPhoto) {
+      Swal.fire({
+        background: '#111827',
+        color: '#f3f4f6',
+        icon: 'warning',
+        title: 'Photo Required',
+        text: 'Please upload a front view photo to simulate your transplant.',
+        confirmButtonColor: colorScheme.primary
+      });
+      return;
+    }
+
+    setLoadingFlux(true);
+    setFluxResultPhoto('');
+
+    try {
+      const res = await fetch('/api/ai/hair-transplant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          photo: visualizerPhoto.startsWith('data:') || visualizerPhoto.startsWith('http')
+            ? visualizerPhoto
+            : `data:image/jpeg;base64,${visualizerPhoto}`,
+          quality: 'pro',
+          strength: 0.25,
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Hair transplant simulation failed');
+      }
+
+      setFluxResultPhoto(data.image);
+      Swal.fire({
+        background: '#111827',
+        color: '#f3f4f6',
+        icon: 'success',
+        title: 'Simulation Complete!',
+        text: 'Your post-transplant look has been generated using Black Forest Labs FLUX AI.',
+        confirmButtonColor: colorScheme.primary
+      });
+    } catch (err: any) {
+      Swal.fire({
+        background: '#111827',
+        color: '#f3f4f6',
+        icon: 'error',
+        title: 'Simulation Failed',
+        text: err.message || 'Failed to communicate with AI server.',
+        confirmButtonColor: '#e11d48'
+      });
+    } finally {
+      setLoadingFlux(false);
+    }
+  };
+
+  const handleDownloadImage = () => {
+    const targetPhoto = fluxResultPhoto || visualizerPhoto;
+    if (!targetPhoto) return;
+
+    const imageSrc = targetPhoto.startsWith('http') || targetPhoto.startsWith('data:')
+      ? targetPhoto
+      : `data:image/jpeg;base64,${targetPhoto}`;
+
+    const link = document.createElement('a');
+    link.href = imageSrc;
+    link.download = `hair-transplant-simulation-${Date.now()}.jpg`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getLifestyleRecommendation = () => {
@@ -394,6 +473,144 @@ export default function ClinicHairTestClient({ clinic }: { clinic: ClinicData })
                     ({result.donorArea?.densityEstimateGraftsPerCm2 || 75} Grafts/cm²)
                   </span>
                 </div>
+              </div>
+
+              {/* AI Hair Transplant Outcome Visualizer Card */}
+              <div className="bg-slate-950/60 border border-amber-500/30 rounded-2xl p-6 md:p-8 space-y-6 shadow-xl">
+                <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                  <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">✨ AI Hair Transplant Outcome Visualizer</h3>
+                    <p className="text-xs text-slate-400">
+                      Simulate your post-transplant hairline powered by Black Forest Labs FLUX AI.
+                    </p>
+                  </div>
+                </div>
+
+                {!visualizerPhoto ? (
+                  <div className="text-center p-8 border-2 border-dashed border-slate-800 hover:border-amber-500/50 rounded-2xl transition-colors bg-slate-900/30">
+                    <CameraOutlined className="text-4xl text-amber-400 mb-3" />
+                    <h4 className="text-sm font-bold text-white mb-1">Upload Front View Photograph</h4>
+                    <p className="text-xs text-slate-400 mb-4 max-w-sm mx-auto">
+                      Upload a clear front-facing photograph to simulate your post-transplant hairline.
+                    </p>
+                    <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-lg shadow-amber-900/20">
+                      <span>📸 Select Front Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const base64 = reader.result as string;
+                            setVisualizerPhoto(base64);
+                            setFluxResultPhoto('');
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                      {/* Original / Uploaded Photo */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                          Original Front Photo
+                        </span>
+                        <div className="relative aspect-square rounded-2xl overflow-hidden border border-slate-800 bg-slate-900">
+                          <img
+                            src={visualizerPhoto.startsWith('data:') || visualizerPhoto.startsWith('http') ? visualizerPhoto : `data:image/jpeg;base64,${visualizerPhoto}`}
+                            alt="Front View"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+
+                      {/* AI Resulted Photo */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block flex items-center justify-between">
+                          <span>Post-Transplant Look (AI)</span>
+                          {fluxResultPhoto && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Verified Ready</span>}
+                        </span>
+                        <div className="relative aspect-square rounded-2xl overflow-hidden border border-amber-500/30 bg-slate-900 flex items-center justify-center">
+                          {loadingFlux ? (
+                            <div className="text-center p-6 space-y-3">
+                              <Spin size="large" />
+                              <p className="text-xs text-amber-300 font-semibold animate-pulse">
+                                Running Black Forest Labs FLUX AI...
+                              </p>
+                              <p className="text-[11px] text-slate-400">Preserving facial identity & generating natural density</p>
+                            </div>
+                          ) : fluxResultPhoto ? (
+                            <img
+                              src={fluxResultPhoto}
+                              alt="AI Hair Transplant Outcome"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-center p-6 text-slate-500 space-y-2">
+                              <Sparkles className="w-8 h-8 mx-auto text-slate-600" />
+                              <p className="text-xs font-medium">Click generate to preview your post-transplant look</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons: Generate & Download */}
+                    <div className="flex flex-wrap gap-4 items-center justify-center pt-2">
+                      <Button
+                        type="primary"
+                        size="large"
+                        icon={<Sparkles className="w-4 h-4 inline" />}
+                        loading={loadingFlux}
+                        onClick={handleGenerateVisualizer}
+                        style={{ backgroundColor: colorScheme.primary, borderColor: colorScheme.primary }}
+                        className="font-bold px-8 h-12 rounded-xl shadow-lg"
+                      >
+                        {fluxResultPhoto ? '🔄 Re-Generate Post-Transplant Look' : '✨ Generate Post-Transplant Look (Flux AI)'}
+                      </Button>
+
+                      {fluxResultPhoto && (
+                        <Button
+                          type="default"
+                          size="large"
+                          onClick={handleDownloadImage}
+                          className="font-bold px-6 h-12 rounded-xl border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 shadow-lg flex items-center gap-2"
+                        >
+                          <span>📥 Download Resulted Image</span>
+                        </Button>
+                      )}
+
+                      <label className="text-xs text-slate-400 hover:text-white underline cursor-pointer self-center ml-2">
+                        <span>Change Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const base64 = reader.result as string;
+                              setVisualizerPhoto(base64);
+                              setFluxResultPhoto('');
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Row 2: Rationale & Recommendation Detail */}

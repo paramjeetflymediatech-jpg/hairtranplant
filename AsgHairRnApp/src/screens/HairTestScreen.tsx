@@ -8,11 +8,13 @@ import {
   StyleSheet, 
   ActivityIndicator, 
   Linking, 
-  Alert 
+  Alert,
+  Image,
+  Share
 } from 'react-native';
 import SweetAlert from '../components/SweetAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
 
@@ -74,6 +76,13 @@ const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: str
   }
 };
 
+const HAIRLINES: Record<string, any> = {
+  straight: require('../assets/hairline_straight.png'),
+  mature: require('../assets/hairline_mature.png'),
+  oval: require('../assets/hairline_oval.png'),
+  temple: require('../assets/hairline_temple.png'),
+};
+
 interface HairTestScreenProps {
   onBack: () => void;
 }
@@ -82,6 +91,13 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [selectedHairline, setSelectedHairline] = useState<string>('straight');
+  const [overlayYOffset, setOverlayYOffset] = useState<number>(0);
+  const [overlayScale, setOverlayScale] = useState<number>(1.0);
+  const [overlayOpacity, setOverlayOpacity] = useState<number>(0.9);
+  const [visualizerPhoto, setVisualizerPhoto] = useState<string>('');
+  const [fluxResultPhoto, setFluxResultPhoto] = useState<string>('');
+  const [loadingFlux, setLoadingFlux] = useState<boolean>(false);
 
   // Session state
   const [token, setToken] = useState('');
@@ -190,12 +206,50 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
     fetchSession();
   }, []);
 
-  const selectPhoto = (setter: (val: string) => void) => {
-    launchImageLibrary({ mediaType: 'photo', includeBase64: true }, (response) => {
-      if (response.assets && response.assets[0]?.base64) {
+  const triggerCamera = (setter: (val: string) => void) => {
+    launchCamera({ mediaType: 'photo', includeBase64: true, quality: 0.8 }, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled camera');
+      } else if (response.errorMessage) {
+        showAlert('error', 'Camera Error', response.errorMessage);
+      } else if (response.assets && response.assets[0]?.base64) {
         setter(response.assets[0].base64);
       }
     });
+  };
+
+  const triggerGallery = (setter: (val: string) => void) => {
+    launchImageLibrary({ mediaType: 'photo', includeBase64: true, quality: 0.8 }, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled gallery');
+      } else if (response.errorMessage) {
+        showAlert('error', 'Gallery Error', response.errorMessage);
+      } else if (response.assets && response.assets[0]?.base64) {
+        setter(response.assets[0].base64);
+      }
+    });
+  };
+
+  const selectPhoto = (setter: (val: string) => void) => {
+    Alert.alert(
+      'Select Photo Source',
+      'Choose a method to upload your photo:',
+      [
+        {
+          text: 'Camera',
+          onPress: () => triggerCamera(setter),
+        },
+        {
+          text: 'Gallery',
+          onPress: () => triggerGallery(setter),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const nextStep = () => {
@@ -223,6 +277,12 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
   const handleSubmit = async () => {
     if (!name || !email) {
       showAlert('error', 'Contact Required', 'Please enter your name and email to receive the report.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      showAlert('error', 'Invalid Email', 'Please enter a valid email address.');
       return;
     }
 
@@ -261,6 +321,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
       if (!res.ok) throw new Error(data.error || 'Failed to analyze');
 
       setResult(data.analysis);
+      setVisualizerPhoto(frontPhoto || '');
       setActiveLeadId(data.leadId || null);
       setIsGuest(data.isGuest !== false);
       setPatientId(data.patientId || null);
@@ -347,6 +408,79 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
     setResult(null);
     setStep(1);
     setWhatsappTracked(false);
+    setVisualizerPhoto('');
+    setFluxResultPhoto('');
+    setLoadingFlux(false);
+  };
+
+  const generateTransplantVisual = async () => {
+    if (!visualizerPhoto) {
+      showAlert('error', 'Photo Required', 'Please upload a front view photograph to simulate your transplant.');
+      return;
+    }
+
+    setLoadingFlux(true);
+    setFluxResultPhoto('');
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/public/simulate-transplant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          photo: visualizerPhoto,
+          hairlineStyle: selectedHairline
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to simulate transplant');
+
+      if (data.isDemo) {
+        showAlert(
+          'info',
+          'Demo Mode Active',
+          'To generate real AI-inpainted transplant portraits, configure your FAL_KEY inside the .env file. Showing instant simulated overlay preview.'
+        );
+      }
+      
+      setFluxResultPhoto(data.simulatedPhotoUrl);
+    } catch (e: any) {
+      showAlert('error', 'Simulation Failed', e.message || 'Failed to communicate with AI server.');
+    } finally {
+      setLoadingFlux(false);
+    }
+  };
+
+  const downloadResultImage = async () => {
+    const targetPhoto = fluxResultPhoto || visualizerPhoto;
+    if (!targetPhoto) {
+      showAlert('error', 'No Image Available', 'Please generate or upload a photo first.');
+      return;
+    }
+
+    try {
+      if (targetPhoto.startsWith('http://') || targetPhoto.startsWith('https://')) {
+        const supported = await Linking.canOpenURL(targetPhoto);
+        if (supported) {
+          await Linking.openURL(targetPhoto);
+        } else {
+          await Share.share({
+            url: targetPhoto,
+            title: 'Hair Transplant Simulation Result',
+            message: 'My AI Hair Transplant Simulation Result: ' + targetPhoto,
+          });
+        }
+      } else {
+        await Share.share({
+          url: targetPhoto.startsWith('data:') ? targetPhoto : `data:image/jpeg;base64,${targetPhoto}`,
+          title: 'Hair Transplant Simulation Result',
+          message: 'My AI Hair Transplant Simulation Result',
+        });
+      }
+    } catch (err: any) {
+      console.warn('Download image error:', err);
+      showAlert('info', 'Download Options', 'Open the image link or save to your photo library.');
+    }
   };
 
   const renderAnalysisDetails = (result: any) => {
@@ -535,6 +669,77 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
           </View>
 
           {renderAnalysisDetails(result)}
+
+          {/* AI Transplant Visualizer Section */}
+          <View style={styles.visualizerCard}>
+            <Text style={styles.visualizerCardTitle}>✨ AI Transplant Outcome Visualizer</Text>
+            <Text style={styles.visualizerDesc}>
+              Preview your future hairline! Adjust the style below, then generate a realistic AI-inpainted portrait to see your younger, restored look.
+            </Text>
+
+            {!visualizerPhoto ? (
+              <TouchableOpacity 
+                style={[styles.photoUploadButton, { backgroundColor: THEME.primary }]} 
+                onPress={() => selectPhoto(setVisualizerPhoto)}
+              >
+                <Text style={styles.photoUploadButtonText}>📸 Upload Front View Photo</Text>
+              </TouchableOpacity>
+            ) : (
+              <View>
+                {/* Clean Photo Preview */}
+                <View style={styles.previewContainer}>
+                  <Image 
+                    source={{ uri: (fluxResultPhoto || visualizerPhoto).startsWith('http') || (fluxResultPhoto || visualizerPhoto).startsWith('data:') ? (fluxResultPhoto || visualizerPhoto) : `data:image/jpeg;base64,${fluxResultPhoto || visualizerPhoto}` }}
+                    style={styles.previewBgImage}
+                    resizeMode="cover"
+                  />
+                </View>
+
+                {fluxResultPhoto && (
+                  <View style={styles.successBadge}>
+                    <Text style={styles.successBadgeText}>✨ Post-Transplant Look Generated!</Text>
+                  </View>
+                )}
+
+                <View style={{ height: 16 }} />
+
+                {loadingFlux ? (
+                  <View style={styles.fluxLoader}>
+                    <ActivityIndicator size="small" color={THEME.primary} />
+                    <Text style={styles.fluxLoaderText}>Running Flux AI Image Generation...</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.fluxGenerateBtn} 
+                    onPress={generateTransplantVisual}
+                  >
+                    <Text style={styles.fluxGenerateBtnText}>
+                      {fluxResultPhoto ? '🔄 Generate New Design (Flux AI)' : '✨ Generate Post-Transplant Look (Flux AI)'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {fluxResultPhoto && (
+                  <TouchableOpacity 
+                    style={[styles.fluxGenerateBtn, { backgroundColor: '#059669', marginTop: 10 }]} 
+                    onPress={downloadResultImage}
+                  >
+                    <Text style={styles.fluxGenerateBtnText}>📥 Download / Save Resulted Image</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity 
+                  style={styles.resetVisualizerBtn}
+                  onPress={() => {
+                    setVisualizerPhoto('');
+                    setFluxResultPhoto('');
+                  }}
+                >
+                  <Text style={styles.resetVisualizerBtnText}>Upload Different Photo</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           {/* Guest Signup */}
           {isGuest && !isLoggedIn && (
@@ -730,6 +935,22 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 </Text>
               </TouchableOpacity>
 
+              {frontPhoto ? (
+                <View style={styles.previewCard}>
+                  <Text style={styles.previewCardTitle}>Uploaded Front Hairline Photo</Text>
+                  
+                  <View style={styles.previewContainer}>
+                    <Image 
+                      source={{ uri: `data:image/jpeg;base64,${frontPhoto}` }}
+                      style={styles.previewBgImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={{ height: 16 }} />
+
               <TouchableOpacity style={styles.photoUploadButton} onPress={() => selectPhoto(setTopPhoto)}>
                 <Text style={styles.photoUploadButtonText}>
                   {topPhoto ? 'Crown Vertex Selected ✓' : 'Upload Crown View'}
@@ -762,6 +983,9 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
                 onChangeText={setEmail}
                 style={styles.input}
                 editable={!isLoggedIn}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
               <TextInput 
                 placeholder="Phone Number (Optional)"
@@ -1149,5 +1373,181 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     color: THEME.textSecondary,
+  },
+  previewCard: {
+    backgroundColor: '#FAF5F2',
+    borderWidth: 1.5,
+    borderColor: '#FFEBE0',
+    borderRadius: 20,
+    padding: 16,
+    marginTop: 16,
+  },
+  previewCardTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: THEME.primary,
+    textAlign: 'center',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  previewContainer: {
+    width: '100%',
+    height: 320,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+    position: 'relative',
+  },
+  previewBgImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewOverlayImage: {
+    position: 'absolute',
+    left: '5%',
+    width: '90%',
+    height: 140,
+  },
+  selectorTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: THEME.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  styleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  styleButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+    backgroundColor: '#ffffff',
+  },
+  styleButtonActive: {
+    borderColor: THEME.primary,
+    backgroundColor: THEME.badge,
+  },
+  styleButtonText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: THEME.textSecondary,
+  },
+  styleButtonTextActive: {
+    color: THEME.primary,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.cardBorder,
+  },
+  controlGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  controlBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F5EAE4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8D4CA',
+  },
+  controlBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: THEME.primary,
+  },
+  resetPreviewBtn: {
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  resetPreviewBtnText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: THEME.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  visualizerCard: {
+    backgroundColor: '#FAF5F2',
+    borderWidth: 1.5,
+    borderColor: '#FFEBE0',
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 20,
+  },
+  visualizerCardTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: THEME.primary,
+    marginBottom: 6,
+  },
+  visualizerDesc: {
+    fontSize: 11,
+    color: THEME.textSecondary,
+    lineHeight: 15,
+    marginBottom: 16,
+  },
+  successBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10B981',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  successBadgeText: {
+    color: '#047857',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  fluxLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    gap: 8,
+  },
+  fluxLoaderText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: THEME.textSecondary,
+  },
+  fluxGenerateBtn: {
+    backgroundColor: THEME.primary,
+    borderRadius: 16,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fluxGenerateBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  resetVisualizerBtn: {
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  resetVisualizerBtnText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: THEME.textSecondary,
+    textDecorationLine: 'underline',
   },
 });
