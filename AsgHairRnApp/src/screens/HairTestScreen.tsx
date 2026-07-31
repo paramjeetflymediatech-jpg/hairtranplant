@@ -76,12 +76,7 @@ const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: str
   }
 };
 
-const HAIRLINES: Record<string, any> = {
-  straight: require('../assets/hairline_straight.png'),
-  mature: require('../assets/hairline_mature.png'),
-  oval: require('../assets/hairline_oval.png'),
-  temple: require('../assets/hairline_temple.png'),
-};
+
 
 interface HairTestScreenProps {
   onBack: () => void;
