@@ -28,6 +28,7 @@ export default function PatientPortalPage() {
   const [loading, setLoading] = useState(true);
   const [showBookModal, setShowBookModal] = useState(false);
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [portalErrors, setPortalErrors] = useState<{ [key: string]: string }>({});
   const [newApp, setNewApp] = useState({
     doctorId: '',
     appointmentDate: '',
@@ -36,6 +37,111 @@ export default function PatientPortalPage() {
     type: 'CONSULTATION',
     notes: '',
   });
+
+  const TIME_SLOTS = [
+    { value: '09:00', label: '09:00 AM' },
+    { value: '09:30', label: '09:30 AM' },
+    { value: '10:00', label: '10:00 AM' },
+    { value: '10:30', label: '10:30 AM' },
+    { value: '11:00', label: '11:00 AM' },
+    { value: '11:30', label: '11:30 AM' },
+    { value: '12:00', label: '12:00 PM' },
+    { value: '12:30', label: '12:30 PM' },
+    { value: '13:00', label: '01:00 PM' },
+    { value: '13:30', label: '01:30 PM' },
+    { value: '14:00', label: '02:00 PM' },
+    { value: '14:30', label: '02:30 PM' },
+    { value: '15:00', label: '03:00 PM' },
+    { value: '15:30', label: '03:30 PM' },
+    { value: '16:00', label: '04:00 PM' },
+    { value: '16:30', label: '04:30 PM' },
+    { value: '17:00', label: '05:00 PM' },
+    { value: '17:30', label: '05:30 PM' },
+    { value: '18:00', label: '06:00 PM' },
+    { value: '18:30', label: '06:30 PM' },
+    { value: '19:00', label: '07:00 PM' },
+  ];
+
+  const checkPortalOverlap = (date: string, startTime: string, endTime: string, docId: string) => {
+    if (!date || !startTime || !endTime) return null;
+    const existingApps: any[] = data?.patient?.appointments || [];
+
+    const sameDayApps = existingApps.filter(
+      (a: any) => a.appointmentDate === date && a.status !== 'CANCELLED'
+    );
+
+    for (const app of sameDayApps) {
+      if (startTime < app.endTime && endTime > app.startTime) {
+        return `You already have an appointment scheduled between ${app.startTime} and ${app.endTime}.`;
+      }
+    }
+    return null;
+  };
+
+  const validatePortalForm = () => {
+    const errors: { [key: string]: string } = {};
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (!newApp.doctorId) {
+      errors.doctorId = 'Specialist selection is required.';
+    }
+    if (!newApp.appointmentDate) {
+      errors.appointmentDate = 'Date selection is required.';
+    } else if (newApp.appointmentDate < todayStr) {
+      errors.appointmentDate = 'Date cannot be in the past.';
+    }
+
+    const WORK_START = '09:00';
+    const WORK_END = '19:00';
+
+    if (!newApp.startTime) {
+      errors.startTime = 'Start time is required.';
+    } else if (newApp.startTime < WORK_START || newApp.startTime > WORK_END) {
+      errors.startTime = 'Start time must be within working hours (09:00 AM - 07:00 PM).';
+    }
+
+    if (!newApp.endTime) {
+      errors.endTime = 'End time is required.';
+    } else if (newApp.endTime < WORK_START || newApp.endTime > WORK_END) {
+      errors.endTime = 'End time must be within working hours (09:00 AM - 07:00 PM).';
+    }
+
+    if (newApp.startTime && newApp.endTime) {
+      if (newApp.startTime >= newApp.endTime) {
+        errors.endTime = 'End time must be after start time.';
+      } else {
+        const [sH, sM] = newApp.startTime.split(':').map(Number);
+        const [eH, eM] = newApp.endTime.split(':').map(Number);
+        const duration = (eH * 60 + eM) - (sH * 60 + sM);
+        if (duration < 15) {
+          errors.endTime = 'Slot duration must be at least 15 minutes.';
+        }
+      }
+
+      if (newApp.appointmentDate === todayStr) {
+        const now = new Date();
+        const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if (currentHHMM > WORK_END) {
+          errors.appointmentDate = 'Working hours for today (09:00 AM - 07:00 PM) have ended. Please pick a future date.';
+        } else if (newApp.startTime < currentHHMM) {
+          errors.startTime = 'Start time cannot be in the past for today.';
+        }
+      }
+
+      const overlapError = checkPortalOverlap(
+        newApp.appointmentDate,
+        newApp.startTime,
+        newApp.endTime,
+        newApp.doctorId
+      );
+      if (overlapError) {
+        errors.overlap = overlapError;
+      }
+    }
+
+    setPortalErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const fetchPortalData = async () => {
     try {
@@ -65,6 +171,16 @@ export default function PatientPortalPage() {
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!data?.patient?.id) return;
+    if (!validatePortalForm()) {
+      Swal.fire({
+        title: 'Validation Error',
+        text: 'Please check the highlighted form inputs.',
+        icon: 'warning',
+        confirmButtonColor: '#0d9488',
+      });
+      return;
+    }
+
     try {
       const res = await fetch('/api/appointments', {
         method: 'POST',
@@ -83,6 +199,7 @@ export default function PatientPortalPage() {
           confirmButtonColor: '#0d9488',
         });
         setShowBookModal(false);
+        setPortalErrors({});
         setNewApp({
           doctorId: '',
           appointmentDate: '',
@@ -390,22 +507,31 @@ export default function PatientPortalPage() {
       {/* Book Consultation Modal */}
       {showBookModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <form onSubmit={handleBook} className="w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4">
+          <form onSubmit={handleBook} noValidate className="w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-slate-900">Request Consultation Slot</h3>
             
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Select Doctor / Specialist</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Select Doctor / Specialist <span className="text-rose-500">*</span>
+              </label>
               <select
-                required
                 value={newApp.doctorId}
-                onChange={(e) => setNewApp({ ...newApp, doctorId: e.target.value })}
-                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-teal-500"
+                onChange={(e) => {
+                  setNewApp({ ...newApp, doctorId: e.target.value });
+                  if (portalErrors.doctorId) setPortalErrors((prev) => ({ ...prev, doctorId: '' }));
+                }}
+                className={`w-full px-4 py-2 rounded-xl text-slate-900 text-xs font-medium focus:outline-none ${
+                  portalErrors.doctorId
+                    ? 'bg-rose-50/50 border border-rose-400 focus:border-rose-500'
+                    : 'bg-slate-50 border border-slate-200 focus:border-teal-500'
+                }`}
               >
                 <option value="">-- Choose Specialist --</option>
                 {doctors.map((d) => (
                   <option key={d.id} value={d.id}>{d.name} ({d.role})</option>
                 ))}
               </select>
+              {portalErrors.doctorId && <p className="text-[11px] text-rose-500 font-medium mt-1">{portalErrors.doctorId}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -423,40 +549,90 @@ export default function PatientPortalPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Date</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Date <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="date"
-                  required
+                  min={new Date().toISOString().split('T')[0]}
                   value={newApp.appointmentDate}
-                  onChange={(e) => setNewApp({ ...newApp, appointmentDate: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-teal-500"
+                  onChange={(e) => {
+                    setNewApp({ ...newApp, appointmentDate: e.target.value });
+                    if (portalErrors.appointmentDate) setPortalErrors((prev) => ({ ...prev, appointmentDate: '' }));
+                  }}
+                  className={`w-full px-4 py-2 rounded-xl text-slate-900 text-xs font-medium focus:outline-none ${
+                    portalErrors.appointmentDate
+                      ? 'bg-rose-50/50 border border-rose-400 focus:border-rose-500'
+                      : 'bg-slate-50 border border-slate-200 focus:border-teal-500'
+                  }`}
                 />
+                {portalErrors.appointmentDate && <p className="text-[11px] text-rose-500 font-medium mt-1">{portalErrors.appointmentDate}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  required
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Start Time <span className="text-rose-500">*</span>
+                </label>
+                <select
                   value={newApp.startTime}
-                  onChange={(e) => setNewApp({ ...newApp, startTime: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-teal-500"
-                />
+                  onChange={(e) => {
+                    setNewApp({ ...newApp, startTime: e.target.value });
+                    if (portalErrors.startTime || portalErrors.overlap) {
+                      setPortalErrors((prev) => ({ ...prev, startTime: '', overlap: '' }));
+                    }
+                  }}
+                  className={`w-full px-4 py-2 rounded-xl text-slate-900 text-xs font-medium focus:outline-none ${
+                    portalErrors.startTime
+                      ? 'bg-rose-50/50 border border-rose-400 focus:border-rose-500'
+                      : 'bg-slate-50 border border-slate-200 focus:border-teal-500'
+                  }`}
+                >
+                  <option value="">-- Select Start Time --</option>
+                  {TIME_SLOTS.slice(0, -1).map((slot) => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
+                {portalErrors.startTime && <p className="text-[11px] text-rose-500 font-medium mt-1">{portalErrors.startTime}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">End Time</label>
-                <input
-                  type="time"
-                  required
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  End Time <span className="text-rose-500">*</span>
+                </label>
+                <select
                   value={newApp.endTime}
-                  onChange={(e) => setNewApp({ ...newApp, endTime: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-teal-500"
-                />
+                  onChange={(e) => {
+                    setNewApp({ ...newApp, endTime: e.target.value });
+                    if (portalErrors.endTime || portalErrors.overlap) {
+                      setPortalErrors((prev) => ({ ...prev, endTime: '', overlap: '' }));
+                    }
+                  }}
+                  className={`w-full px-4 py-2 rounded-xl text-slate-900 text-xs font-medium focus:outline-none ${
+                    portalErrors.endTime
+                      ? 'bg-rose-50/50 border border-rose-400 focus:border-rose-500'
+                      : 'bg-slate-50 border border-slate-200 focus:border-teal-500'
+                  }`}
+                >
+                  <option value="">-- Select End Time --</option>
+                  {TIME_SLOTS.filter((slot) => !newApp.startTime || slot.value > newApp.startTime).map((slot) => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
+                {portalErrors.endTime && <p className="text-[11px] text-rose-500 font-medium mt-1">{portalErrors.endTime}</p>}
               </div>
             </div>
+
+            {portalErrors.overlap && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold flex items-center gap-2">
+                <span>⚠️ {portalErrors.overlap}</span>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Additional Notes</label>
@@ -471,7 +647,10 @@ export default function PatientPortalPage() {
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setShowBookModal(false)}
+                onClick={() => {
+                  setPortalErrors({});
+                  setShowBookModal(false);
+                }}
                 className="w-1/2 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200"
               >
                 Cancel

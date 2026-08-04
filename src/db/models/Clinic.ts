@@ -18,6 +18,11 @@ export interface ClinicAttributes {
   timezone?: string;
   subscriptionPlan: 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
   subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'CANCELLED';
+  brevoEnabled?: boolean;
+  brevoApiKey?: string;
+  brevoSenderEmail?: string;
+  brevoSenderName?: string;
+  brevoRecipientEmails?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -68,6 +73,14 @@ export const Clinic = sequelize.define<ClinicInstance>(
       type: DataTypes.ENUM('ACTIVE', 'TRIAL', 'PAST_DUE', 'CANCELLED'),
       defaultValue: 'ACTIVE',
     },
+    brevoEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    brevoApiKey: DataTypes.STRING,
+    brevoSenderEmail: DataTypes.STRING,
+    brevoSenderName: DataTypes.STRING,
+    brevoRecipientEmails: DataTypes.TEXT,
   },
   {
     tableName: 'clinics',

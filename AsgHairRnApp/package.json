@@ -1,13 +1,17 @@
 {
   "name": "com.asghair.app",
-  "version": "0.0.1",
+  "version": "1.0.3",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "screenshots:android": "./capture_screenshots.sh",
+    "screenshots:ios": "./capture_ios_screenshots.sh",
+    "screenshots:ipad": "./capture_ipad_screenshots.sh",
+    "screenshots:format": "./format_appstore_screenshots.sh"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.1.1",

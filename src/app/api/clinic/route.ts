@@ -26,7 +26,25 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const { name, email, phone, address, city, state, country, timezone, logo, backgroundImage, featureImage, themeColor } = await req.json();
+    const {
+      name,
+      email,
+      phone,
+      address,
+      city,
+      state,
+      country,
+      timezone,
+      logo,
+      backgroundImage,
+      featureImage,
+      themeColor,
+      brevoEnabled,
+      brevoApiKey,
+      brevoSenderEmail,
+      brevoSenderName,
+      brevoRecipientEmails,
+    } = await req.json();
 
     const clinic = await Clinic.findByPk(session.clinicId);
     if (!clinic) {
@@ -45,7 +63,12 @@ export async function PUT(req: NextRequest) {
       logo,
       backgroundImage,
       featureImage,
-      themeColor
+      themeColor,
+      brevoEnabled: brevoEnabled !== undefined ? Boolean(brevoEnabled) : clinic.brevoEnabled,
+      brevoApiKey: brevoApiKey !== undefined ? brevoApiKey : clinic.brevoApiKey,
+      brevoSenderEmail: brevoSenderEmail !== undefined ? brevoSenderEmail : clinic.brevoSenderEmail,
+      brevoSenderName: brevoSenderName !== undefined ? brevoSenderName : clinic.brevoSenderName,
+      brevoRecipientEmails: brevoRecipientEmails !== undefined ? brevoRecipientEmails : clinic.brevoRecipientEmails,
     });
 
     return NextResponse.json({ success: true, clinic });

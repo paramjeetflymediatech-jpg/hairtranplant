@@ -10,7 +10,9 @@ import {
   Linking, 
   Alert,
   Image,
-  Share
+  Share,
+  Platform,
+  PermissionsAndroid
 } from 'react-native';
 import SweetAlert from '../components/SweetAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -201,12 +203,50 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
     fetchSession();
   }, []);
 
-  const triggerCamera = (setter: (val: string) => void) => {
+  const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Camera Permission',
+            message: 'ASG Hair Test requires access to your camera to take scalp photos for AI hair loss analysis.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Camera permission error:', err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const triggerCamera = async (setter: (val: string) => void) => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) {
+      showAlert('error', 'Permission Denied', 'Camera permission is required to take scalp photos.');
+      return;
+    }
+
     launchCamera({ mediaType: 'photo', includeBase64: true, quality: 0.8 }, (response) => {
       if (response.didCancel) {
         console.log('User cancelled camera');
       } else if (response.errorMessage) {
-        showAlert('error', 'Camera Error', response.errorMessage);
+        const isUnavailable = response.errorMessage.toLowerCase().includes('camera_unavailable') || 
+                              response.errorMessage.toLowerCase().includes('available');
+        showAlert(
+          'warning',
+          'Camera Unavailable',
+          isUnavailable 
+            ? (Platform.OS === 'ios'
+                ? 'The camera is not supported on the iOS Simulator by Apple. Please select "Choose from Gallery" or test on a physical iPhone.'
+                : 'Camera is not available on this Android Emulator/Device. Please select "Choose from Gallery" or verify camera settings.')
+            : response.errorMessage
+        );
       } else if (response.assets && response.assets[0]?.base64) {
         setter(response.assets[0].base64);
       }

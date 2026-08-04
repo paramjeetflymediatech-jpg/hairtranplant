@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Form, Input, Button, Card, Spin, Tabs, Table, Tag, Modal, Select, Avatar, Badge, Space } from 'antd';
+import { Form, Input, Button, Card, Spin, Tabs, Table, Tag, Modal, Select, Avatar, Badge, Space, Switch } from 'antd';
 import {
   SaveOutlined,
   PictureOutlined,
@@ -52,6 +52,16 @@ export default function ClinicSettingsPage() {
   const [slug, setSlug] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState('#0d9488');
 
+  // Brevo configuration states
+  const [brevoEnabled, setBrevoEnabled] = useState(false);
+  const [brevoApiKey, setBrevoApiKey] = useState('');
+  const [brevoSenderEmail, setBrevoSenderEmail] = useState('');
+  const [brevoSenderName, setBrevoSenderName] = useState('');
+  const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
+  const [newRecipientInput, setNewRecipientInput] = useState('');
+  const [testingBrevo, setTestingBrevo] = useState(false);
+  const [savingBrevo, setSavingBrevo] = useState(false);
+
   // Team management states
   const [teamList, setTeamList] = useState<TeamMember[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
@@ -59,7 +69,7 @@ export default function ClinicSettingsPage() {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [savingStaff, setSavingStaff] = useState(false);
   const [staffForm] = Form.useForm();
-  const selectedRole = Form.useWatch('role', staffForm);
+  const [selectedRole, setSelectedRole] = useState<string>('DOCTOR');
 
   // Personal Admin Profile states
   const [userProfileForm] = Form.useForm();
@@ -77,6 +87,131 @@ export default function ClinicSettingsPage() {
     { label: 'Amber Gold', hex: '#d97706' },
     { label: 'Obsidian Dark', hex: '#0f172a' },
   ];
+
+  // Recipient email helpers
+  const handleAddRecipientEmail = () => {
+    const trimmed = newRecipientInput.trim().toLowerCase();
+    if (!trimmed) return;
+    if (!trimmed.includes('@') || !trimmed.includes('.')) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invalid Email',
+        text: 'Please enter a valid email address format.',
+        confirmButtonColor: '#0d9488',
+      });
+      return;
+    }
+    if (recipientEmails.includes(trimmed)) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Duplicate Email',
+        text: 'This email is already in the recipient list.',
+        confirmButtonColor: '#0d9488',
+      });
+      return;
+    }
+    setRecipientEmails((prev) => [...prev, trimmed]);
+    setNewRecipientInput('');
+  };
+
+  const handleRemoveRecipientEmail = (emailToRemove: string) => {
+    setRecipientEmails((prev) => prev.filter((e) => e !== emailToRemove));
+  };
+
+  const handleSaveBrevoSettings = async () => {
+    setSavingBrevo(true);
+    try {
+      const res = await fetch('/api/clinic', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brevoEnabled,
+          brevoApiKey,
+          brevoSenderEmail,
+          brevoSenderName,
+          brevoRecipientEmails: recipientEmails.join(', '),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save Brevo configuration');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Brevo Configuration Saved!',
+        text: 'Your email delivery settings and recipient list have been updated successfully.',
+        confirmButtonColor: '#0d9488',
+      });
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Save Failed',
+        text: err.message || 'Error saving Brevo settings',
+        confirmButtonColor: '#e11d48',
+      });
+    } finally {
+      setSavingBrevo(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!brevoApiKey.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing API Key',
+        text: 'Please enter your Brevo API Key before sending a test email.',
+        confirmButtonColor: '#0d9488',
+      });
+      return;
+    }
+
+    const defaultRecipient = recipientEmails.length > 0 ? recipientEmails[0] : brevoSenderEmail || form.getFieldValue('email');
+
+    const { value: targetEmail } = await Swal.fire({
+      title: 'Send Brevo Test Email',
+      text: 'Enter the email address to receive the test email notification:',
+      input: 'email',
+      inputValue: defaultRecipient,
+      showCancelButton: true,
+      confirmButtonText: 'Send Test Email',
+      confirmButtonColor: '#0d9488',
+    });
+
+    if (!targetEmail) return;
+
+    setTestingBrevo(true);
+    try {
+      const res = await fetch('/api/clinic/test-brevo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: brevoApiKey,
+          senderEmail: brevoSenderEmail,
+          senderName: brevoSenderName,
+          recipientEmail: targetEmail,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Test email failed');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Test Email Dispatched!',
+        text: data.message || `Test email successfully delivered to ${targetEmail}.`,
+        confirmButtonColor: '#0d9488',
+      });
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Test Email Failed',
+        text: err.message || 'Failed to send test email via Brevo.',
+        confirmButtonColor: '#e11d48',
+      });
+    } finally {
+      setTestingBrevo(false);
+    }
+  };
 
   // Load clinic data
   useEffect(() => {
@@ -106,6 +241,22 @@ export default function ClinicSettingsPage() {
         setFeaturePreview(data.clinic.featureImage || null);
         setSlug(data.clinic.slug);
         setThemeColor(data.clinic.themeColor || '#0d9488');
+
+        // Populate Brevo fields
+        setBrevoEnabled(Boolean(data.clinic.brevoEnabled));
+        setBrevoApiKey(data.clinic.brevoApiKey || '');
+        setBrevoSenderEmail(data.clinic.brevoSenderEmail || data.clinic.email || '');
+        setBrevoSenderName(data.clinic.brevoSenderName || data.clinic.name || '');
+
+        if (data.clinic.brevoRecipientEmails) {
+          const emailList = data.clinic.brevoRecipientEmails
+            .split(',')
+            .map((e: string) => e.trim())
+            .filter((e: string) => e.length > 0);
+          setRecipientEmails(emailList);
+        } else if (data.clinic.email) {
+          setRecipientEmails([data.clinic.email]);
+        }
       } catch (err: any) {
         Swal.fire({
           icon: 'error',
@@ -315,6 +466,7 @@ export default function ClinicSettingsPage() {
     setEditingMember(null);
     staffForm.resetFields();
     staffForm.setFieldsValue({ role: 'DOCTOR', customRoleTitle: '', isActive: true });
+    setSelectedRole('DOCTOR');
     setIsStaffModalOpen(true);
   };
 
@@ -322,15 +474,17 @@ export default function ClinicSettingsPage() {
   const handleOpenEditModal = (member: TeamMember) => {
     setEditingMember(member);
     const isStandard = standardRoles.includes(member.role);
+    const roleVal = isStandard ? member.role : 'CUSTOM';
     staffForm.setFieldsValue({
       name: member.name,
       email: member.email,
-      role: isStandard ? member.role : 'CUSTOM',
+      role: roleVal,
       customRoleTitle: isStandard ? '' : member.role.replace(/_/g, ' '),
       phone: member.phone || '',
       password: '',
       isActive: member.isActive,
     });
+    setSelectedRole(roleVal);
     setIsStaffModalOpen(true);
   };
 
@@ -1097,6 +1251,183 @@ export default function ClinicSettingsPage() {
               </div>
             ),
           },
+          {
+            key: 'brevo',
+            label: (
+              <span className="font-bold px-2 py-1 flex items-center gap-2 text-sm">
+                <MailOutlined className="text-teal-600" /> Brevo Email Config
+              </span>
+            ),
+            children: (
+              <div className="space-y-6 pt-2">
+                {/* Header Info Card */}
+                <Card className="bg-slate-900 text-white rounded-2xl border-0 shadow-lg overflow-hidden relative">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Tag color={brevoEnabled ? 'success' : 'default'} className="font-bold text-xs uppercase px-2.5 py-0.5 rounded-full">
+                          {brevoEnabled ? '⚡ Integration Active' : '⚪ Disabled'}
+                        </Tag>
+                        <span className="text-xs text-slate-400 font-medium">Transactional Email Delivery Engine</span>
+                      </div>
+                      <h2 className="text-xl font-extrabold text-white tracking-tight mt-2">Brevo (Sendinblue) Email Service Configuration</h2>
+                      <p className="text-slate-300 text-xs mt-1 max-w-2xl">
+                        Configure your Brevo API key, custom sender credentials, and multi-recipient notification email addresses for patient bookings, AI diagnostic reports, and operational alerts.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
+                      <span className="text-xs font-bold text-slate-200">Enable Brevo Delivery</span>
+                      <Switch
+                        checked={brevoEnabled}
+                        onChange={(checked) => setBrevoEnabled(checked)}
+                        className={brevoEnabled ? 'bg-teal-500' : 'bg-slate-600'}
+                      />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Main Brevo Configuration Form Card */}
+                <Card className="shadow-sm rounded-2xl border border-slate-200" title="Brevo API & Sender Settings">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Brevo API Key <span className="text-rose-500">*</span>
+                        </label>
+                        <Input.Password
+                          prefix={<KeyOutlined className="text-teal-600" />}
+                          placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxx"
+                          size="large"
+                          value={brevoApiKey}
+                          onChange={(e) => setBrevoApiKey(e.target.value)}
+                          className="rounded-xl"
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">Found in Brevo Dashboard → SMTP & API → API Keys.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Authorized Sender Email <span className="text-rose-500">*</span>
+                        </label>
+                        <Input
+                          prefix={<MailOutlined className="text-slate-400" />}
+                          placeholder="notifications@asghairtransplant.com"
+                          size="large"
+                          value={brevoSenderEmail}
+                          onChange={(e) => setBrevoSenderEmail(e.target.value)}
+                          className="rounded-xl"
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">Must be a verified sender domain in Brevo.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Sender Name / Display Title
+                        </label>
+                        <Input
+                          prefix={<ShopOutlined className="text-slate-400" />}
+                          placeholder="ASG Hair Clinic Operations"
+                          size="large"
+                          value={brevoSenderName}
+                          onChange={(e) => setBrevoSenderName(e.target.value)}
+                          className="rounded-xl"
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">Display name shown in patient inboxes.</p>
+                      </div>
+                    </div>
+
+                    {/* Multiple Recipient Emails Section */}
+                    <div className="border-t border-slate-100 pt-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-800">Multiple Notification Recipient Emails</h3>
+                          <p className="text-xs text-slate-500">
+                            Add multiple email addresses (e.g. admins, receptionists, operational desks) that should receive booking notifications and system copy alerts.
+                          </p>
+                        </div>
+                        <Tag color="teal" className="font-bold text-xs px-3 py-1 rounded-full">
+                          {recipientEmails.length} {recipientEmails.length === 1 ? 'Recipient' : 'Recipients'} Active
+                        </Tag>
+                      </div>
+
+                      {/* Recipient Input Box */}
+                      <div className="flex gap-2 max-w-lg mb-4">
+                        <Input
+                          prefix={<MailOutlined className="text-teal-600" />}
+                          placeholder="Add recipient email (e.g. ops@clinic.com)..."
+                          size="large"
+                          value={newRecipientInput}
+                          onChange={(e) => setNewRecipientInput(e.target.value)}
+                          onPressEnter={(e) => {
+                            e.preventDefault();
+                            handleAddRecipientEmail();
+                          }}
+                          className="rounded-xl"
+                        />
+                        <Button
+                          type="primary"
+                          onClick={handleAddRecipientEmail}
+                          size="large"
+                          className="bg-teal-600 hover:bg-teal-700 font-bold rounded-xl shrink-0"
+                        >
+                          + Add Email
+                        </Button>
+                      </div>
+
+                      {/* Recipient Email Chips List */}
+                      <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-200/80 min-h-[70px] items-center">
+                        {recipientEmails.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic">No recipient emails added yet. Add an email above to start receiving alerts.</p>
+                        ) : (
+                          recipientEmails.map((email) => (
+                            <span
+                              key={email}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-teal-200 text-teal-900 text-xs font-bold shadow-2xs hover:border-teal-400 transition-all"
+                            >
+                              <MailOutlined className="text-teal-600" />
+                              <span>{email}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveRecipientEmail(email)}
+                                className="text-slate-400 hover:text-rose-600 font-bold text-sm leading-none ml-1 transition-colors"
+                                title="Remove Email"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer Actions: Test Email & Save */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100 pt-6">
+                      <Button
+                        type="default"
+                        icon={<MailOutlined />}
+                        loading={testingBrevo}
+                        onClick={handleSendTestEmail}
+                        className="font-bold text-xs text-teal-700 border-teal-300 hover:border-teal-500 rounded-xl h-11 px-5"
+                      >
+                        Send Test Email via Brevo
+                      </Button>
+
+                      <Button
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        loading={savingBrevo}
+                        onClick={handleSaveBrevoSettings}
+                        className="bg-teal-600 hover:bg-teal-700 font-bold text-xs rounded-xl h-11 px-8 shadow-md shadow-teal-500/20"
+                      >
+                        Save Brevo Configuration
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            ),
+          },
         ]}
       />
 
@@ -1123,6 +1454,11 @@ export default function ClinicSettingsPage() {
           form={staffForm}
           layout="vertical"
           onFinish={handleStaffFormFinish}
+          onValuesChange={(changedValues) => {
+            if (changedValues.role !== undefined) {
+              setSelectedRole(changedValues.role);
+            }
+          }}
           initialValues={{ role: 'DOCTOR' }}
           className="space-y-4 pt-4"
         >
