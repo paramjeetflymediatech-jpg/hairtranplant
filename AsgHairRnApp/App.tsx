@@ -9,6 +9,8 @@ import PatientPortalScreen from './src/screens/PatientPortalScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import { THEME } from './src/config/theme';
+import { clearAuthTokens } from './src/utils/apiClient';
+import SessionKeepAlive from './src/components/SessionKeepAlive';
 
 type Screen = 'Splash' | 'Welcome' | 'ClinicHome' | 'HairTest' | 'Portal' | 'Profile' | 'History';
 
@@ -17,6 +19,7 @@ function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#C23500" />
+      <SessionKeepAlive />
       <AppContent />
     </SafeAreaProvider>
   );
@@ -39,7 +42,8 @@ function AppContent() {
     ? { flex: 1 }
     : { flex: 1, paddingTop: safeAreaInsets.top, paddingBottom: safeAreaInsets.bottom };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await clearAuthTokens();
     setPortalToken('');
     setPortalName('');
     setPortalStatus('');

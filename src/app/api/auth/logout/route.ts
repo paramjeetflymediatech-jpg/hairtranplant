@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
+import { clearAuthCookies } from '@/lib/auth';
 
 export async function POST() {
   const res = NextResponse.json({ success: true, message: 'Logged out successfully' });
-  res.cookies.set('graftdesk_session', '', {
-    httpOnly: true,
-    expires: new Date(0),
-    path: '/',
-  });
+  clearAuthCookies(res);
   return res;
 }

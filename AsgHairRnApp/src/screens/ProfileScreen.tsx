@@ -6,6 +6,7 @@ import {
 import SweetAlert from '../components/SweetAlert';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
+import { saveAuthTokens, clearAuthTokens } from '../utils/apiClient';
 
 type Props = {
   token: string;
@@ -95,6 +96,9 @@ export default function ProfileScreen({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+      if (data.token) {
+        await saveAuthTokens(data.token, data.refreshToken);
+      }
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       onProfileSaved(data.user?.name || editName, data.user?.phone || editPhone, data.token);
       showAlert('success', 'Success ✓', 'Your profile has been updated successfully.');
@@ -117,6 +121,7 @@ export default function ProfileScreen({
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+          await clearAuthTokens();
           showAlert('success', 'Account Deleted', 'Your account has been deleted permanently.', () => {
             onLogout();
           });

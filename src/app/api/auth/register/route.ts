@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { User, Clinic, Subscription, ensureDbSynced } from '@/db/models';
-import { hashPassword, signToken } from '@/lib/auth';
+import { hashPassword, signToken, signRefreshToken, setAuthCookies } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,13 +48,16 @@ export async function POST(req: NextRequest) {
       isActive: true,
     });
 
-    const token = signToken({
+    const tokenPayload = {
       userId: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       clinicId: user.clinicId,
-    });
+    };
+
+    const token = signToken(tokenPayload, '7d');
+    const refreshToken = signRefreshToken(tokenPayload, '30d');
 
     const res = NextResponse.json({
       success: true,
@@ -71,15 +74,10 @@ export async function POST(req: NextRequest) {
         slug: clinic.slug,
       },
       token,
+      refreshToken,
     });
 
-    res.cookies.set('graftdesk_session', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    });
+    setAuthCookies(res, token, refreshToken);
 
     return res;
   } catch (error: any) {

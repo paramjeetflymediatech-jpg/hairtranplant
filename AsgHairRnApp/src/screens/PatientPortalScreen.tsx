@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SweetAlert from '../components/SweetAlert';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
+import { saveAuthTokens, clearAuthTokens, refreshAuthToken, getAuthToken } from '../utils/apiClient';
 
 const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
   'Norwood I': {
@@ -265,7 +266,14 @@ export default function PatientPortalScreen({
           }
         }
       } else if (res.status === 401) {
-        await AsyncStorage.removeItem('auth_token');
+        // Attempt silent token refresh before logging user out
+        const refreshedToken = await refreshAuthToken();
+        if (refreshedToken) {
+          setToken(refreshedToken);
+          fetchPortalData(refreshedToken);
+          return;
+        }
+        await clearAuthTokens();
         setToken('');
         setIsLoggedIn(false);
         showAlert('warning', 'Session Expired', 'Please log in again.');
@@ -478,7 +486,7 @@ export default function PatientPortalScreen({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Authentication failed');
 
-      await AsyncStorage.setItem('auth_token', data.token);
+      await saveAuthTokens(data.token, data.refreshToken);
       setToken(data.token);
       setIsLoggedIn(true);
       fetchPortalData(data.token);
@@ -523,7 +531,7 @@ export default function PatientPortalScreen({
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('auth_token');
+    await clearAuthTokens();
     setToken('');
     setIsLoggedIn(false);
     setPatientName('');
@@ -566,9 +574,9 @@ export default function PatientPortalScreen({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update profile');
 
-      // Update stored session token (the resigned token returned by backend)
+      // Update stored session tokens (resigned access + refresh tokens returned by backend)
       if (data.token) {
-        await AsyncStorage.setItem('auth_token', data.token);
+        await saveAuthTokens(data.token, data.refreshToken);
         setToken(data.token);
       }
 

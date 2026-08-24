@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
+import { saveAuthTokens, refreshAuthToken } from '../utils/apiClient';
 
 // Norwood descriptions dictionary
 const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
@@ -178,14 +179,31 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('auth_token');
+        let storedToken = await AsyncStorage.getItem('auth_token');
         if (storedToken) {
           setToken(storedToken);
           // Fetch user credentials
-          const res = await fetch(`${BASE_URL}/api/auth/me`, {
+          let res = await fetch(`${BASE_URL}/api/auth/me`, {
             method: 'GET',
-            headers: { 'Cookie': `graftdesk_session=${storedToken}` }
+            headers: {
+              'Cookie': `graftdesk_session=${storedToken}`,
+              'Authorization': `Bearer ${storedToken}`,
+            }
           });
+          if (res.status === 401) {
+            const refreshed = await refreshAuthToken();
+            if (refreshed) {
+              storedToken = refreshed;
+              setToken(refreshed);
+              res = await fetch(`${BASE_URL}/api/auth/me`, {
+                method: 'GET',
+                headers: {
+                  'Cookie': `graftdesk_session=${refreshed}`,
+                  'Authorization': `Bearer ${refreshed}`,
+                }
+              });
+            }
+          }
           if (res.ok) {
             const data = await res.json();
             if (data.user && data.user.role === 'PATIENT') {
@@ -393,7 +411,7 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-      await AsyncStorage.setItem('auth_token', data.token);
+      await saveAuthTokens(data.token, data.refreshToken);
       setToken(data.token);
       setIsLoggedIn(true);
       setIsGuest(false);

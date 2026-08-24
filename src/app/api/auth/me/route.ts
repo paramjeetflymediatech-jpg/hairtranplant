@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUser, verifyPassword, hashPassword, signToken } from '@/lib/auth';
+import {
+  getSessionUser,
+  verifyPassword,
+  hashPassword,
+  signToken,
+  signRefreshToken,
+  setAuthCookies,
+  clearAuthCookies,
+} from '@/lib/auth';
 import { User, Clinic, Patient, ensureDbSynced } from '@/db/models';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +29,20 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ user });
+    // Refresh session tokens on profile retrieval to keep active user session alive
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      clinicId: user.clinicId,
+    };
+    const token = signToken(tokenPayload, '7d');
+    const refreshToken = signRefreshToken(tokenPayload, '30d');
+
+    const res = NextResponse.json({ user, token, refreshToken });
+    setAuthCookies(res, token, refreshToken);
+    return res;
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to fetch profile' }, { status: 500 });
   }
@@ -66,14 +87,17 @@ export async function PUT(req: NextRequest) {
 
     await user.save();
 
-    // Re-sign token with updated info
-    const token = signToken({
+    // Re-sign tokens with updated info
+    const tokenPayload = {
       userId: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       clinicId: user.clinicId,
-    });
+    };
+
+    const token = signToken(tokenPayload, '7d');
+    const refreshToken = signRefreshToken(tokenPayload, '30d');
 
     const userResponse = {
       id: user.id,
@@ -90,15 +114,10 @@ export async function PUT(req: NextRequest) {
       message: 'Profile updated successfully',
       user: userResponse,
       token,
+      refreshToken,
     });
 
-    res.cookies.set('graftdesk_session', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    });
+    setAuthCookies(res, token, refreshToken);
 
     return res;
   } catch (error: any) {
@@ -132,23 +151,16 @@ export async function DELETE() {
     // Delete the User account
     await user.destroy();
 
-    // Clear session cookie
+    // Clear session cookies
     const res = NextResponse.json({
       success: true,
       message: 'Account deleted successfully',
     });
 
-    res.cookies.set('graftdesk_session', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    });
+    clearAuthCookies(res);
 
     return res;
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete account' }, { status: 500 });
   }
 }
-
