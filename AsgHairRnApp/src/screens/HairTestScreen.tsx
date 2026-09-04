@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
-import { saveAuthTokens, refreshAuthToken } from '../utils/apiClient';
+import { saveAuthTokens, refreshAuthToken, fetchWithAuth, getAuthToken } from '../utils/apiClient';
 
 // Norwood descriptions dictionary
 const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
@@ -179,31 +179,13 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        let storedToken = await AsyncStorage.getItem('auth_token');
+        const storedToken = await getAuthToken();
         if (storedToken) {
           setToken(storedToken);
           // Fetch user credentials
-          let res = await fetch(`${BASE_URL}/api/auth/me`, {
+          const res = await fetchWithAuth(`${BASE_URL}/api/auth/me`, {
             method: 'GET',
-            headers: {
-              'Cookie': `graftdesk_session=${storedToken}`,
-              'Authorization': `Bearer ${storedToken}`,
-            }
           });
-          if (res.status === 401) {
-            const refreshed = await refreshAuthToken();
-            if (refreshed) {
-              storedToken = refreshed;
-              setToken(refreshed);
-              res = await fetch(`${BASE_URL}/api/auth/me`, {
-                method: 'GET',
-                headers: {
-                  'Cookie': `graftdesk_session=${refreshed}`,
-                  'Authorization': `Bearer ${refreshed}`,
-                }
-              });
-            }
-          }
           if (res.ok) {
             const data = await res.json();
             if (data.user && data.user.role === 'PATIENT') {
@@ -354,12 +336,18 @@ export default function HairTestScreen({ onBack }: HairTestScreenProps) {
     }
 
     try {
+      const activeToken = token || (await getAuthToken()) || '';
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+      };
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+        headers['Cookie'] = `graftdesk_session=${activeToken}`;
+      }
+
       const res = await fetch(`${BASE_URL}/api/public/ai-analysis`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Cookie': token ? `graftdesk_session=${token}` : ''
-        },
+        headers,
         body: JSON.stringify({
           name,
           email,

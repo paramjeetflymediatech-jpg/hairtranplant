@@ -6,7 +6,7 @@ import {
 import SweetAlert from '../components/SweetAlert';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
-import { saveAuthTokens, clearAuthTokens } from '../utils/apiClient';
+import { saveAuthTokens, clearAuthTokens, fetchWithAuth } from '../utils/apiClient';
 
 type Props = {
   token: string;
@@ -89,9 +89,13 @@ export default function ProfileScreen({
     try {
       const payload: any = { name: editName.trim(), phone: editPhone.trim() };
       if (newPassword) { payload.currentPassword = currentPassword; payload.newPassword = newPassword; }
-      const res = await fetch(`${BASE_URL}/api/auth/me`, {
+      const res = await fetchWithAuth(`${BASE_URL}/api/auth/me`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Cookie: `graftdesk_session=${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Cookie': `graftdesk_session=${token}`,
+        },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -115,9 +119,12 @@ export default function ProfileScreen({
       async () => {
         setIsDeleting(true);
         try {
-          const res = await fetch(`${BASE_URL}/api/auth/me`, {
+          const res = await fetchWithAuth(`${BASE_URL}/api/auth/me`, {
             method: 'DELETE',
-            headers: { Cookie: `graftdesk_session=${token}` },
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Cookie': `graftdesk_session=${token}`,
+            },
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Failed to delete account');

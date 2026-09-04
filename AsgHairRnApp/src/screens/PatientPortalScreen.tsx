@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SweetAlert from '../components/SweetAlert';
 import { BASE_URL } from '../config/apiConfig';
 import { THEME } from '../config/theme';
-import { saveAuthTokens, clearAuthTokens, refreshAuthToken, getAuthToken } from '../utils/apiClient';
+import { saveAuthTokens, clearAuthTokens, refreshAuthToken, getAuthToken, fetchWithAuth } from '../utils/apiClient';
 
 const STAGE_DETAILS: Record<string, { title: string; desc: string; symptoms: string[]; care: string }> = {
   'Norwood I': {
@@ -201,17 +201,26 @@ export default function PatientPortalScreen({
     onGoToHistory(token, patientName, patientStatus, allAnalyses);
   };
 
-  const fetchPortalData = async (activeToken: string) => {
+  const fetchPortalData = async (activeToken?: string) => {
     setLoadingData(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/portal/dashboard`, {
+      const currentToken = activeToken || (await getAuthToken()) || token;
+      const res = await fetchWithAuth(`${BASE_URL}/api/portal/dashboard`, {
         method: 'GET',
-        headers: { 'Cookie': `graftdesk_session=${activeToken}` }
+        headers: currentToken
+          ? {
+              Authorization: `Bearer ${currentToken}`,
+              Cookie: `graftdesk_session=${currentToken}`,
+            }
+          : {},
       });
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          const patient = data.patient;
+          const patient = data.patient || {};
+          const validToken = (await getAuthToken()) || currentToken || '';
+          setToken(validToken);
+          setIsLoggedIn(true);
           setPatientName(patient.name || 'Patient');
           setPatientStatus(patient.status || 'CONSULTATION');
           setEditName(patient.name || '');
@@ -221,7 +230,7 @@ export default function PatientPortalScreen({
           setAllAnalyses(analyses || []);
 
           // Sync parent auth context
-          onPortalDataLoaded(activeToken, patient.name || 'Patient', patient.status || 'CONSULTATION', patient.phone || '', analyses || []);
+          onPortalDataLoaded(validToken, patient.name || 'Patient', patient.status || 'CONSULTATION', patient.phone || '', analyses || []);
 
           if (analyses && analyses.length > 0) {
             const lastAnalysis = analyses[0];
@@ -266,20 +275,13 @@ export default function PatientPortalScreen({
           }
         }
       } else if (res.status === 401) {
-        // Attempt silent token refresh before logging user out
-        const refreshedToken = await refreshAuthToken();
-        if (refreshedToken) {
-          setToken(refreshedToken);
-          fetchPortalData(refreshedToken);
-          return;
-        }
         await clearAuthTokens();
         setToken('');
         setIsLoggedIn(false);
         showAlert('warning', 'Session Expired', 'Please log in again.');
       }
     } catch (e) {
-      console.error(e);
+      console.error('fetchPortalData error:', e);
     } finally {
       setLoadingData(false);
     }
@@ -562,10 +564,11 @@ export default function PatientPortalScreen({
         payload.newPassword = newPassword;
       }
 
-      const res = await fetch(`${BASE_URL}/api/auth/me`, {
+      const res = await fetchWithAuth(`${BASE_URL}/api/auth/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
           'Cookie': `graftdesk_session=${token}`
         },
         body: JSON.stringify(payload),

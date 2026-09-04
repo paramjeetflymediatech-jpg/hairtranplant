@@ -133,18 +133,20 @@ export async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = await getAuthToken();
+  let token = await getAuthToken();
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) || {}),
   };
 
+  // If token is in headers (e.g. from caller), prioritize it
+  const authHeader = headers['Authorization'] || headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  }
+
   if (token) {
-    if (!headers['Cookie']) {
-      headers['Cookie'] = `graftdesk_session=${token}`;
-    }
-    if (!headers['Authorization']) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    headers['Cookie'] = `graftdesk_session=${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   let response = await fetch(url, {
@@ -171,3 +173,4 @@ export async function fetchWithAuth(
 
   return response;
 }
+
