@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { StatusBar, StyleSheet, useColorScheme, View, Text, TouchableOpacity } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  StatusBar,
+  StyleSheet,
+  useColorScheme,
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
 import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import ClinicHomeScreen from './src/screens/ClinicHomeScreen';
@@ -17,16 +24,15 @@ type Screen = 'Splash' | 'Welcome' | 'ClinicHome' | 'HairTest' | 'Portal' | 'Pro
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
   return (
-    <SafeAreaProvider>
+    <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#C23500" />
       <SessionKeepAlive />
       <AppContent />
-    </SafeAreaProvider>
+    </View>
   );
 }
 
 function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
   const [screen, setScreen] = useState<Screen>('Splash');
 
   // Shared portal auth context — lifted so all portal sub-screens share it
@@ -38,9 +44,6 @@ function AppContent() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isSplashOrWelcome = screen === 'Splash' || screen === 'Welcome';
-  const paddingStyle = isSplashOrWelcome
-    ? { flex: 1 }
-    : { flex: 1, paddingTop: safeAreaInsets.top, paddingBottom: safeAreaInsets.bottom };
 
   const handleLogout = async () => {
     await clearAuthTokens();
@@ -63,10 +66,8 @@ function AppContent() {
     setScreen(targetScreen);
   };
 
-  const isPortalScreen = screen === 'Portal' || screen === 'Profile' || screen === 'History';
-
-  return (
-    <View style={[styles.container, paddingStyle]}>
+  const content = (
+    <View style={styles.container}>
       {screen === 'Splash' && <SplashScreen onFinish={() => setScreen('Welcome')} />}
 
       {screen === 'Welcome' && (
@@ -228,9 +229,17 @@ function AppContent() {
       )}
     </View>
   );
+
+  if (isSplashOrWelcome) {
+    return content;
+  }
+
+  return <SafeAreaView style={styles.safeArea}>{content}</SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: THEME.bg },
+  safeArea: { flex: 1, backgroundColor: THEME.bg },
   container: { flex: 1, backgroundColor: THEME.bg },
   drawerBackdrop: {
     position: 'absolute',
